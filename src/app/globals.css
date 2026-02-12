@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 57% 96%;
+    --foreground: 25 10% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 25 10% 15%;
+    --primary: 26 75% 45%;
+    --primary-foreground: 36 57% 96%;
+    --secondary: 35 40% 90%;
+    --secondary-foreground: 25 10% 15%;
+    --border: 35 25% 82%;
+    --input: 35 25% 82%;
+    --ring: 26 75% 45%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    background-image: radial-gradient(circle at top right, #fff0cf, hsl(var(--background)) 45%);
+  }
+}
