@@ -13,6 +13,9 @@
   - `main` push/PR마다 `lint` + `typecheck` + `build` 검증
 - CD: `.github/workflows/cd-vercel.yml`
   - `main` push 시 Vercel Production 배포
+- PR 자동화:
+  - `.github/workflows/pr-auto-review.yml` (품질 자동 리뷰 코멘트)
+  - `.github/workflows/pr-summary.yml` (변경 요약 코멘트)
 - Vercel 설정: `vercel.json`
 
 ## GitHub Secrets (CD용)
@@ -29,4 +32,10 @@
 ## 현재 범위
 - PRD: `docs/PRD.md`
 - 초기 화면: `/`, `/auth`
+- AI 테스트 화면: `/ai-sticker-test`
 - Supabase 클라이언트: `src/lib/supabase.ts`
+- 디자인 시스템 컴포넌트: `src/components/ui/*`
+
+## Import Alias
+- `@/*` -> `src/*`
+- 예: `import { Button } from '@/components/ui/button'`

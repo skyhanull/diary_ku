@@ -1,0 +1,72 @@
+name: PR Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        id: lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Type check
+        id: typecheck
+        run: npm run typecheck
+        continue-on-error: true
+
+      - name: Build
+        id: build
+        run: npm run build
+        continue-on-error: true
+
+      - name: Post auto review summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const lint = '${{ steps.lint.outcome }}';
+            const typecheck = '${{ steps.typecheck.outcome }}';
+            const build = '${{ steps.build.outcome }}';
+
+            const ok = (v) => v === 'success' ? '✅' : '❌';
+            const body = [
+              '## 🤖 Auto Review Summary',
+              '',
+              `- Lint: ${ok(lint)} ${lint}`,
+              `- Typecheck: ${ok(typecheck)} ${typecheck}`,
+              `- Build: ${ok(build)} ${build}`,
+              '',
+              '실패한 항목이 있으면 해당 step 로그를 확인해 수정해주세요.'
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Fail workflow when quality gate fails
+        if: steps.lint.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.build.outcome != 'success'
+        run: exit 1
