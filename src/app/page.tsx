@@ -19,6 +19,12 @@ export default function HomePage() {
         >
           로그인 화면으로 이동
         </Link>
+        <Link
+          href="/editor/demo-page"
+          className="ml-2 mt-5 inline-flex rounded-md border border-input bg-white px-4 py-2 text-sm font-medium"
+        >
+          에디터 MVP 화면
+        </Link>
       </section>
     </main>
   );

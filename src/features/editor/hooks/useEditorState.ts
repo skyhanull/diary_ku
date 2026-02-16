@@ -1,19 +1,13 @@
-'use client';
+"use client";
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from "react";
 
-import type {
-  CreateEditorItemInput,
-  CreateEditorStateInput,
-  EditorItem,
-  EditorState,
-  EditorViewMode
-} from '@/features/editor/types/editor.types';
+import type { CreateEditorItemInput, CreateEditorStateInput, EditorItem, EditorState, EditorViewMode } from "@/features/editor/types/editor.types";
 
-const DEFAULT_BACKGROUND = '#FFF8ED';
+const DEFAULT_BACKGROUND = "#FFF8ED";
 
 function createItemId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
 
@@ -23,11 +17,11 @@ function createItemId() {
 function createInitialState(input: CreateEditorStateInput): EditorState {
   return {
     pageId: input.pageId,
-    viewMode: input.viewMode ?? 'single',
+    viewMode: input.viewMode ?? "single",
     background: input.background ?? DEFAULT_BACKGROUND,
     selectedItemId: input.selectedItemId ?? null,
     items: input.items ?? [],
-    isDirty: false
+    isDirty: false,
   };
 }
 
@@ -54,24 +48,32 @@ export function useEditorState(input: CreateEditorStateInput) {
 
   const addItem = useCallback((inputItem: CreateEditorItemInput) => {
     setState((prev) => {
+      const fixedStickerX = 40;
+      const fixedStickerY = 40;
+      const isSticker = inputItem.type === "sticker";
+      const x = isSticker ? fixedStickerX : inputItem.x ?? 40;
+      const y = isSticker ? fixedStickerY : inputItem.y ?? 40;
+
       const item: EditorItem = {
         id: createItemId(),
         type: inputItem.type,
-        pageSide: inputItem.pageSide ?? (prev.viewMode === 'spread' ? 'left' : 'single'),
-        x: inputItem.x ?? 40,
-        y: inputItem.y ?? 40,
+        pageSide: inputItem.pageSide ?? (prev.viewMode === "spread" ? "left" : "single"),
+        x,
+        y,
         width: inputItem.width ?? 120,
         height: inputItem.height ?? 120,
         rotation: inputItem.rotation ?? 0,
         zIndex: getNextZIndex(prev.items),
-        payload: inputItem.payload ?? {}
+        payload: inputItem.payload ?? {},
       };
+
+      const nextItems = [...prev.items, item];
 
       return {
         ...prev,
-        items: [...prev.items, item],
-        selectedItemId: item.id,
-        isDirty: true
+        items: nextItems,
+        selectedItemId: null,
+        isDirty: true,
       };
     });
   }, []);
@@ -83,7 +85,7 @@ export function useEditorState(input: CreateEditorStateInput) {
       return {
         ...prev,
         items,
-        isDirty: true
+        isDirty: true,
       };
     });
   }, []);
@@ -93,7 +95,7 @@ export function useEditorState(input: CreateEditorStateInput) {
       ...prev,
       items: prev.items.filter((item) => item.id !== itemId),
       selectedItemId: prev.selectedItemId === itemId ? null : prev.selectedItemId,
-      isDirty: true
+      isDirty: true,
     }));
   }, []);
 
@@ -101,7 +103,7 @@ export function useEditorState(input: CreateEditorStateInput) {
     setState((prev) => ({
       ...prev,
       items,
-      isDirty: true
+      isDirty: true,
     }));
   }, []);
 
@@ -109,10 +111,7 @@ export function useEditorState(input: CreateEditorStateInput) {
     setState((prev) => ({ ...prev, isDirty: false }));
   }, []);
 
-  const selectedItem = useMemo(
-    () => state.items.find((item) => item.id === state.selectedItemId) ?? null,
-    [state.items, state.selectedItemId]
-  );
+  const selectedItem = useMemo(() => state.items.find((item) => item.id === state.selectedItemId) ?? null, [state.items, state.selectedItemId]);
 
   return {
     state,
@@ -124,6 +123,6 @@ export function useEditorState(input: CreateEditorStateInput) {
     updateItem,
     removeItem,
     replaceItems,
-    resetDirty
+    resetDirty,
   };
 }
