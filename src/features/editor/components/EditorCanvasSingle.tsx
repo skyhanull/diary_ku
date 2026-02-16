@@ -2,13 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import TaskItem from '@tiptap/extension-task-item';
+import TaskList from '@tiptap/extension-task-list';
 
 import type { EditorTool } from '@/features/editor/components/EditorTopBar';
 import type { CreateEditorItemInput, EditorItem } from '@/features/editor/types/editor.types';
 
-const LINE_HEIGHT = 28;
-const MARGIN_LEFT = 60;
-const TOP_PADDING = 32;
+const MARGIN_LEFT = 24;
+const TOP_PADDING = 24;
+const HEADER_HEIGHT = 88;
 
 interface EditorCanvasSingleProps {
   background: string;
@@ -19,11 +23,24 @@ interface EditorCanvasSingleProps {
   notebookVariant?: boolean;
   diaryText?: string;
   onDiaryTextChange?: (text: string) => void;
+  diaryDate?: string;
+  onDiaryDateChange?: (value: string) => void;
+  dailyExpense?: string;
+  onDailyExpenseChange?: (value: string) => void;
   onSelectItem: (itemId: string | null) => void;
   onMoveItem: (itemId: string, x: number, y: number) => void;
   onResizeItem?: (itemId: string, width: number, height: number) => void;
   onDropAddItem: (input: CreateEditorItemInput) => void;
   onPlaceTextAt: (x: number, y: number) => void;
+  notebookTheme?: {
+    workspaceBg: string;
+    workspacePattern: string;
+    paperBg: string;
+    paperBorder: string;
+    lineColor: string;
+    marginColor: string;
+    textColor: string;
+  };
 }
 
 type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se';
@@ -78,32 +95,74 @@ export function EditorCanvasSingle({
   notebookVariant = false,
   diaryText = '',
   onDiaryTextChange,
+  diaryDate = '',
+  onDiaryDateChange,
+  dailyExpense = '',
+  onDailyExpenseChange,
   onSelectItem,
   onMoveItem,
   onResizeItem,
   onDropAddItem,
-  onPlaceTextAt
+  onPlaceTextAt,
+  notebookTheme
 }: EditorCanvasSingleProps) {
   const pageRef = useRef<HTMLDivElement | null>(null);
-  const stickerNodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const interactionRef = useRef<InteractionState | null>(null);
   const itemsRef = useRef<EditorItem[]>(items);
+  const diaryEditorRef = useRef<any>(null);
+  const lastEditorHtmlRef = useRef<string>(diaryText || '<p></p>');
   const onMoveItemRef = useRef(onMoveItem);
   const onResizeItemRef = useRef(onResizeItem);
-  const [liveRects, setLiveRects] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
-  const liveRectsRef = useRef(liveRects);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const diaryEditor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      TaskList,
+      TaskItem.configure({
+        nested: true
+      })
+    ],
+    content: diaryText || '<p></p>',
+    editorProps: {
+      attributes: {
+        class: 'diary-editor-content'
+      },
+      handleKeyDown(view, event): boolean {
+        if (event.key !== ' ' || event.isComposing) return false;
 
-  const applyLiveRect = useCallback((itemId: string, rect: { x: number; y: number; width: number; height: number }) => {
-    liveRectsRef.current = { ...liveRectsRef.current, [itemId]: rect };
-    setLiveRects((prev) => ({ ...prev, [itemId]: rect }));
+        const { state } = view;
+        const { $from, from } = state.selection;
+        const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
 
-    const node = stickerNodeRefs.current[itemId];
-    if (node) {
-      node.style.transform = `translate(${rect.x}px, ${rect.y}px)`;
-      node.style.width = `${rect.width}px`;
-      node.style.height = `${rect.height}px`;
+        // Keep Tiptap default input rules for bullet/ordered list.
+        // We only custom-handle task list marker ([] / [ ]).
+        if (!/^(\[\]|\[ \])$/.test(textBefore)) return false;
+        const editor = diaryEditorRef.current;
+        if (!editor) return false;
+
+        const deleteFrom = from - textBefore.length;
+
+        const runToggle = (): boolean => {
+          if (!editor.can().chain().focus().toggleTaskList().run()) return false;
+          return editor
+            .chain()
+            .focus()
+            .deleteRange({ from: deleteFrom, to: from })
+            .toggleTaskList()
+            .run();
+        };
+
+        event.preventDefault();
+        return runToggle();
+      }
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      lastEditorHtmlRef.current = html;
+      onDiaryTextChange?.(html);
     }
-  }, []);
+  });
 
   useEffect(() => {
     itemsRef.current = items;
@@ -118,8 +177,19 @@ export function EditorCanvasSingle({
   }, [onResizeItem]);
 
   useEffect(() => {
-    liveRectsRef.current = liveRects;
-  }, [liveRects]);
+    diaryEditorRef.current = diaryEditor;
+  }, [diaryEditor]);
+
+  useEffect(() => {
+    if (!diaryEditor) return;
+    const incoming = diaryText || '<p></p>';
+    // Ignore parent updates originating from this editor to prevent hydration loops while typing.
+    if (incoming === lastEditorHtmlRef.current) return;
+    if (diaryEditor.getHTML() !== incoming) {
+      diaryEditor.commands.setContent(incoming, { emitUpdate: false });
+      lastEditorHtmlRef.current = incoming;
+    }
+  }, [diaryEditor, diaryText]);
 
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -169,9 +239,10 @@ export function EditorCanvasSingle({
   const beginDrag = (event: ReactPointerEvent<HTMLDivElement>, item: EditorItem) => {
     const page = pageRef.current;
     if (!page) return;
-    const rect = page.getBoundingClientRect();
-    const offsetX = (event.clientX - rect.left) / zoom - item.x;
-    const offsetY = (event.clientY - rect.top) / zoom - item.y;
+    const pageRect = page.getBoundingClientRect();
+    const baseRect = { x: item.x, y: item.y, width: item.width, height: item.height };
+    const offsetX = (event.clientX - pageRect.left) / zoom - baseRect.x;
+    const offsetY = (event.clientY - pageRect.top) / zoom - baseRect.y;
 
     interactionRef.current = {
       mode: 'drag',
@@ -179,20 +250,26 @@ export function EditorCanvasSingle({
       itemId: item.id,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      startX: item.x,
-      startY: item.y,
-      startWidth: item.width,
-      startHeight: item.height,
+      startX: baseRect.x,
+      startY: baseRect.y,
+      startWidth: baseRect.width,
+      startHeight: baseRect.height,
       offsetX,
       offsetY
     };
-    applyLiveRect(item.id, { x: item.x, y: item.y, width: item.width, height: item.height });
+    setDraggingItemId(item.id);
     onSelectItem(item.id);
     event.preventDefault();
     event.stopPropagation();
   };
 
   const beginResize = (event: ReactPointerEvent<HTMLSpanElement>, item: EditorItem, handle: ResizeHandle) => {
+    const baseRect = {
+      x: item.x,
+      y: item.y,
+      width: item.width,
+      height: item.height
+    };
     interactionRef.current = {
       mode: 'resize',
       pointerId: event.pointerId,
@@ -200,24 +277,46 @@ export function EditorCanvasSingle({
       handle,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      startX: item.x,
-      startY: item.y,
-      startWidth: item.width,
-      startHeight: item.height
+      startX: baseRect.x,
+      startY: baseRect.y,
+      startWidth: baseRect.width,
+      startHeight: baseRect.height
     };
-    applyLiveRect(item.id, { x: item.x, y: item.y, width: item.width, height: item.height });
     onSelectItem(item.id);
     event.preventDefault();
     event.stopPropagation();
   };
 
   useEffect(() => {
+    const resetInteraction = () => {
+      interactionRef.current = null;
+      setDraggingItemId(null);
+    };
+
+    const handleGlobalPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('[data-sticker]') && !target?.closest('[data-resize-handle]')) {
+        resetInteraction();
+      }
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       const interaction = interactionRef.current;
       const page = pageRef.current;
       if (!interaction || !page || event.pointerId !== interaction.pointerId) return;
+      if (event.pointerType === 'mouse' && event.buttons === 0) {
+        resetInteraction();
+        return;
+      }
+      if (draggingItemId !== interaction.itemId) return;
 
       const rect = page.getBoundingClientRect();
+      const isInsidePage =
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      if (!isInsidePage) return;
       const pageWidth = rect.width / zoom;
       const pageHeight = rect.height / zoom;
       const deltaX = (event.clientX - interaction.startClientX) / zoom;
@@ -225,18 +324,19 @@ export function EditorCanvasSingle({
 
       const currentItem = itemsRef.current.find((candidate) => candidate.id === interaction.itemId);
       if (!currentItem) return;
+      const currentRect = {
+        x: currentItem.x,
+        y: currentItem.y,
+        width: currentItem.width,
+        height: currentItem.height
+      };
 
       if (interaction.mode === 'drag') {
-        const offsetX = interaction.offsetX ?? currentItem.width / 2;
-        const offsetY = interaction.offsetY ?? currentItem.height / 2;
-        const nextX = clamp((event.clientX - rect.left) / zoom - offsetX, 0, pageWidth - currentItem.width);
-        const nextY = clamp((event.clientY - rect.top) / zoom - offsetY, 0, pageHeight - currentItem.height);
-        applyLiveRect(interaction.itemId, {
-          x: nextX,
-          y: nextY,
-          width: currentItem.width,
-          height: currentItem.height
-        });
+        const offsetX = interaction.offsetX ?? currentRect.width / 2;
+        const offsetY = interaction.offsetY ?? currentRect.height / 2;
+        const nextX = clamp((event.clientX - rect.left) / zoom - offsetX, 0, pageWidth - currentRect.width);
+        const nextY = clamp((event.clientY - rect.top) / zoom - offsetY, 0, pageHeight - currentRect.height);
+        onMoveItemRef.current(interaction.itemId, nextX, nextY);
         return;
       }
 
@@ -267,43 +367,45 @@ export function EditorCanvasSingle({
         nextX = clamp(nextX, 0, pageWidth - nextWidth);
         nextY = clamp(nextY, 0, pageHeight - nextHeight);
 
-        applyLiveRect(interaction.itemId, { x: nextX, y: nextY, width: nextWidth, height: nextHeight });
+        onMoveItemRef.current(interaction.itemId, nextX, nextY);
+        onResizeItemRef.current(interaction.itemId, nextWidth, nextHeight);
       }
     };
 
     const endInteraction = (event: PointerEvent) => {
       const interaction = interactionRef.current;
       if (!interaction || event.pointerId !== interaction.pointerId) return;
-      const finalRect = liveRectsRef.current[interaction.itemId];
-      if (finalRect) {
-        onMoveItemRef.current(interaction.itemId, finalRect.x, finalRect.y);
-        if (interaction.mode === 'resize' && onResizeItemRef.current) {
-          onResizeItemRef.current(interaction.itemId, finalRect.width, finalRect.height);
-        }
-      }
-      setLiveRects((prev) => {
-        const next = { ...prev };
-        delete next[interaction.itemId];
-        return next;
-      });
-      liveRectsRef.current = (() => {
-        const next = { ...liveRectsRef.current };
-        delete next[interaction.itemId];
-        return next;
-      })();
-      interactionRef.current = null;
+      resetInteraction();
     };
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', endInteraction);
     window.addEventListener('pointercancel', endInteraction);
+    window.addEventListener('blur', resetInteraction);
+    window.addEventListener('pointerdown', handleGlobalPointerDown, true);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', endInteraction);
       window.removeEventListener('pointercancel', endInteraction);
+      window.removeEventListener('blur', resetInteraction);
+      window.removeEventListener('pointerdown', handleGlobalPointerDown, true);
     };
-  }, [zoom, applyLiveRect]);
+  }, [zoom, draggingItemId]);
+
+  useEffect(() => {
+    if (!draggingItemId) return;
+    const exists = items.some((item) => item.id === draggingItemId);
+    if (!exists) {
+      interactionRef.current = null;
+      setDraggingItemId(null);
+    }
+  }, [items, draggingItemId]);
+
+  useEffect(() => {
+    interactionRef.current = null;
+    setDraggingItemId(null);
+  }, [items.length]);
 
   const handleStickerWheel = (event: React.WheelEvent, item: EditorItem) => {
     if (!onResizeItem) return;
@@ -327,29 +429,39 @@ export function EditorCanvasSingle({
     [items]
   );
 
+  const theme = notebookTheme ?? {
+    workspaceBg: '#f3f2ee',
+    workspacePattern:
+      'radial-gradient(circle at 1px 1px, rgba(160,160,160,0.12) 1px, transparent 1.2px)',
+    paperBg: '#ffffff',
+    paperBorder: '#e7e3db',
+    lineColor: 'rgba(170,170,170,0.45)',
+    marginColor: 'rgba(228,142,142,0.5)',
+    textColor: '#2f2f2f'
+  };
+
   const renderStickerItems = () =>
     stickerItems.map((item) => {
       const isSelected = selectedItemId === item.id;
-      const rect = liveRects[item.id] ?? { x: item.x, y: item.y, width: item.width, height: item.height };
+      const rect = { x: item.x, y: item.y, width: item.width, height: item.height };
 
       return (
         <div
           key={item.id}
           data-sticker
-          className="absolute select-none"
-          ref={(node) => {
-            stickerNodeRefs.current[item.id] = node;
-          }}
+          data-sticker-item
           style={{
-            left: 0,
-            top: 0,
+            position: 'absolute',
+            left: rect.x,
+            top: rect.y,
             width: rect.width,
             height: rect.height,
-            zIndex: item.zIndex + 20,
-            transform: `translate(${rect.x}px, ${rect.y}px) rotate(${item.rotation}deg)`,
+            zIndex: draggingItemId === item.id ? 9999 : item.zIndex + 20,
+            transform: `rotate(${item.rotation}deg)`,
             cursor: 'move',
             touchAction: 'none',
-            pointerEvents: 'auto'
+            userSelect: 'none',
+            pointerEvents: draggingItemId && draggingItemId !== item.id ? 'none' : 'auto'
           }}
           onClick={(event) => {
             event.stopPropagation();
@@ -400,7 +512,9 @@ export function EditorCanvasSingle({
           justifyContent: 'center',
           width: '100%',
           minHeight: '660px',
-          backgroundColor: '#e8e0c8',
+          backgroundColor: theme.workspaceBg,
+          backgroundImage: theme.workspacePattern,
+          backgroundSize: '16px 16px',
           borderRadius: '12px',
           padding: '20px'
         }}
@@ -411,47 +525,84 @@ export function EditorCanvasSingle({
           style={{
             width: '100%',
             height: '600px',
-            backgroundColor: '#fffef8',
-            border: '3px solid #e2b830',
-            borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            backgroundImage: [
-              `linear-gradient(to bottom, rgba(180,165,145,0.5) 1px, transparent 1px)`,
-              `linear-gradient(to right, rgba(210,90,90,0.45) 2px, transparent 2px)`,
-              `linear-gradient(to right, rgba(210,90,90,0.45) 2px, transparent 2px)`
-            ].join(', '),
-            backgroundSize: `100% ${LINE_HEIGHT}px, 100% 100%, 100% 100%`,
-            backgroundPosition: `0 ${TOP_PADDING}px, ${MARGIN_LEFT - 10}px 0, ${MARGIN_LEFT}px 0`
+            backgroundColor: theme.paperBg,
+            border: `2px solid ${theme.paperBorder}`,
+            borderRadius: '10px',
+            boxShadow: '0 8px 20px rgba(30, 30, 30, 0.08)'
           }}
           onClick={handleCanvasClick}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
         >
-          <textarea
-            value={diaryText}
-            onChange={(event) => onDiaryTextChange?.(event.target.value)}
-            placeholder="여기에 일기를 작성하세요..."
-            spellCheck={false}
+          <div
             style={{
               position: 'absolute',
-              top: TOP_PADDING,
+              top: 16,
+              left: 16,
+              right: 16,
+              zIndex: 2,
+              pointerEvents: draggingItemId ? 'none' : 'auto',
+              borderBottom: `1px solid ${theme.paperBorder}`,
+              display: 'grid',
+              gridTemplateColumns: '1fr 220px',
+              gap: '18px',
+              paddingBottom: '12px'
+            }}
+          >
+            <label style={{ display: 'grid', gap: '4px' }}>
+              <span style={{ fontSize: '10px', letterSpacing: '0.08em', color: '#8b8579', fontWeight: 700 }}>DATE</span>
+              <input
+                type="text"
+                value={diaryDate}
+                onChange={(event) => onDiaryDateChange?.(event.target.value)}
+                placeholder="2026. 02. 15"
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: '18px',
+                  fontWeight: 600,
+                  color: theme.textColor
+                }}
+              />
+            </label>
+            <label style={{ display: 'grid', gap: '4px' }}>
+              <span style={{ fontSize: '10px', letterSpacing: '0.08em', color: '#8b8579', fontWeight: 700 }}>TODAY EXPENSE</span>
+              <input
+                type="text"
+                value={dailyExpense}
+                onChange={(event) => onDailyExpenseChange?.(event.target.value)}
+                placeholder="35000"
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: '18px',
+                  fontWeight: 600,
+                  color: theme.textColor,
+                  textAlign: 'right'
+                }}
+              />
+            </label>
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              top: TOP_PADDING + HEADER_HEIGHT,
               left: MARGIN_LEFT + 8,
               right: 16,
               bottom: 16,
-              lineHeight: `${LINE_HEIGHT}px`,
-              fontSize: '16px',
-              fontFamily: 'inherit',
-              color: '#4b2e1f',
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              padding: 0,
               zIndex: 1,
-              whiteSpace: 'pre-wrap',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              color: theme.textColor,
+              pointerEvents: draggingItemId ? 'none' : 'auto'
             }}
-          />
+          >
+            <EditorContent editor={diaryEditor} />
+          </div>
 
           <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>{renderStickerItems()}</div>
         </div>

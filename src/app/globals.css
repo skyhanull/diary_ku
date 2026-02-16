@@ -28,3 +28,49 @@
     background-image: radial-gradient(circle at top right, #fff0cf, hsl(var(--background)) 45%);
   }
 }
+
+.diary-editor-content {
+  min-height: 100%;
+  font-size: 16px;
+  line-height: 1.8;
+  color: inherit;
+  outline: none;
+  white-space: pre-wrap;
+}
+
+.diary-editor-content p {
+  margin: 0 0 0.35rem;
+}
+
+.diary-editor-content ul,
+.diary-editor-content ol {
+  margin: 0.2rem 0 0.5rem 1.2rem;
+  padding: 0;
+}
+
+.diary-editor-content ul {
+  list-style: disc;
+}
+
+.diary-editor-content ol {
+  list-style: decimal;
+}
+
+.diary-editor-content li {
+  margin: 0.15rem 0;
+}
+
+.diary-editor-content ul[data-type='taskList'] {
+  list-style: none;
+  margin-left: 0;
+}
+
+.diary-editor-content ul[data-type='taskList'] li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.diary-editor-content ul[data-type='taskList'] li > label {
+  margin-top: 0.2rem;
+}
