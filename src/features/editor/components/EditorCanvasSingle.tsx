@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
+import type { Editor as TiptapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
@@ -109,7 +110,7 @@ export function EditorCanvasSingle({
   const pageRef = useRef<HTMLDivElement | null>(null);
   const interactionRef = useRef<InteractionState | null>(null);
   const itemsRef = useRef<EditorItem[]>(items);
-  const diaryEditorRef = useRef<any>(null);
+  const diaryEditorRef = useRef<TiptapEditor | null>(null);
   const lastEditorHtmlRef = useRef<string>(diaryText || '<p></p>');
   const onMoveItemRef = useRef(onMoveItem);
   const onResizeItemRef = useRef(onResizeItem);
