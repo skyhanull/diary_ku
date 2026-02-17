@@ -7,6 +7,7 @@ import type { Editor as TiptapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
+import { TextStyleKit } from '@tiptap/extension-text-style';
 
 import type { EditorTool } from '@/features/editor/components/EditorTopBar';
 import type { CreateEditorItemInput, EditorItem } from '@/features/editor/types/editor.types';
@@ -28,10 +29,12 @@ interface EditorCanvasSingleProps {
   onDiaryDateChange?: (value: string) => void;
   dailyExpense?: string;
   onDailyExpenseChange?: (value: string) => void;
+  onEditorReady?: (editor: TiptapEditor | null) => void;
   onSelectItem: (itemId: string | null) => void;
   onMoveItem: (itemId: string, x: number, y: number) => void;
   onResizeItem?: (itemId: string, width: number, height: number) => void;
   onDropAddItem: (input: CreateEditorItemInput) => void;
+  onDeleteItem?: (itemId: string) => void;
   onPlaceTextAt: (x: number, y: number) => void;
   notebookTheme?: {
     workspaceBg: string;
@@ -100,10 +103,12 @@ export function EditorCanvasSingle({
   onDiaryDateChange,
   dailyExpense = '',
   onDailyExpenseChange,
+  onEditorReady,
   onSelectItem,
   onMoveItem,
   onResizeItem,
   onDropAddItem,
+  onDeleteItem,
   onPlaceTextAt,
   notebookTheme
 }: EditorCanvasSingleProps) {
@@ -119,6 +124,7 @@ export function EditorCanvasSingle({
     immediatelyRender: false,
     extensions: [
       StarterKit,
+      TextStyleKit,
       TaskList,
       TaskItem.configure({
         nested: true
@@ -180,6 +186,11 @@ export function EditorCanvasSingle({
   useEffect(() => {
     diaryEditorRef.current = diaryEditor;
   }, [diaryEditor]);
+
+  useEffect(() => {
+    onEditorReady?.(diaryEditor ?? null);
+    return () => onEditorReady?.(null);
+  }, [diaryEditor, onEditorReady]);
 
   useEffect(() => {
     if (!diaryEditor) return;
@@ -498,7 +509,25 @@ export function EditorCanvasSingle({
               />
             )}
 
-            {isSelected ? <SelectionHandles onResizeStart={(event, handle) => beginResize(event, item, handle)} /> : null}
+            {isSelected ? (
+              <>
+                <SelectionHandles onResizeStart={(event, handle) => beginResize(event, item, handle)} />
+                {onDeleteItem ? (
+                  <button
+                    type="button"
+                    className="absolute -right-2.5 -top-2.5 grid h-5 w-5 place-items-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white shadow-sm hover:bg-red-600"
+                    style={{ zIndex: 1, pointerEvents: 'auto' }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDeleteItem(item.id);
+                    }}
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </>
+            ) : null}
           </div>
         </div>
       );
@@ -509,15 +538,16 @@ export function EditorCanvasSingle({
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'stretch',
           justifyContent: 'center',
           width: '100%',
-          minHeight: '660px',
+          height: '100%',
+          minHeight: 0,
           backgroundColor: theme.workspaceBg,
           backgroundImage: theme.workspacePattern,
           backgroundSize: '16px 16px',
-          borderRadius: '12px',
-          padding: '20px'
+          borderRadius: '8px',
+          padding: '8px'
         }}
       >
         <div
@@ -525,11 +555,11 @@ export function EditorCanvasSingle({
           className="relative overflow-hidden touch-none"
           style={{
             width: '100%',
-            height: '600px',
+            flex: '1 1 0%',
             backgroundColor: theme.paperBg,
-            border: `2px solid ${theme.paperBorder}`,
-            borderRadius: '10px',
-            boxShadow: '0 8px 20px rgba(30, 30, 30, 0.08)'
+            border: `1px solid ${theme.paperBorder}`,
+            borderRadius: '6px',
+            boxShadow: '0 4px 12px rgba(30, 30, 30, 0.06)'
           }}
           onClick={handleCanvasClick}
           onDragOver={(event) => event.preventDefault()}
