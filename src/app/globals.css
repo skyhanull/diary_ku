@@ -4,18 +4,20 @@
 
 @layer base {
   :root {
-    --background: 36 57% 96%;
-    --foreground: 25 10% 15%;
+    --background: 20 50% 98%;
+    --foreground: 25 7% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 25 10% 15%;
-    --primary: 26 75% 45%;
-    --primary-foreground: 36 57% 96%;
-    --secondary: 35 40% 90%;
-    --secondary-foreground: 25 10% 15%;
-    --border: 35 25% 82%;
-    --input: 35 25% 82%;
-    --ring: 26 75% 45%;
-    --radius: 0.75rem;
+    --card-foreground: 25 7% 20%;
+    --primary: 20 21% 46%;
+    --primary-foreground: 18 60% 98%;
+    --secondary: 24 33% 95%;
+    --secondary-foreground: 29 27% 32%;
+    --border: 30 11% 73%;
+    --input: 24 24% 90%;
+    --ring: 20 21% 46%;
+    --muted: 24 29% 92%;
+    --muted-foreground: 30 4% 41%;
+    --radius: 0.5rem;
   }
 
   * {
@@ -25,7 +27,17 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif;
-    background-image: radial-gradient(circle at top right, #fff0cf, hsl(var(--background)) 45%);
+    background-image: radial-gradient(circle at top right, #f7efe8, hsl(var(--background)) 42%);
+    letter-spacing: -0.01em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Epilogue", "Pretendard", sans-serif;
   }
 }
 
