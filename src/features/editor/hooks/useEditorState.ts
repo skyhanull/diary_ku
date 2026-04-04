@@ -48,14 +48,12 @@ export function useEditorState(input: CreateEditorStateInput) {
 
   const addItem = useCallback((inputItem: CreateEditorItemInput) => {
     setState((prev) => {
-      const fixedStickerX = 40;
-      const fixedStickerY = 40;
-      const isSticker = inputItem.type === "sticker";
-      const x = isSticker ? fixedStickerX : inputItem.x ?? 40;
-      const y = isSticker ? fixedStickerY : inputItem.y ?? 40;
+      const x = inputItem.x ?? 40;
+      const y = inputItem.y ?? 40;
+      const id = createItemId();
 
       const item: EditorItem = {
-        id: createItemId(),
+        id,
         type: inputItem.type,
         pageSide: inputItem.pageSide ?? (prev.viewMode === "spread" ? "left" : "single"),
         x,
@@ -64,6 +62,7 @@ export function useEditorState(input: CreateEditorStateInput) {
         height: inputItem.height ?? 120,
         rotation: inputItem.rotation ?? 0,
         zIndex: getNextZIndex(prev.items),
+        opacity: inputItem.opacity ?? 1,
         payload: inputItem.payload ?? {},
       };
 
@@ -72,7 +71,7 @@ export function useEditorState(input: CreateEditorStateInput) {
       return {
         ...prev,
         items: nextItems,
-        selectedItemId: null,
+        selectedItemId: id,
         isDirty: true,
       };
     });
