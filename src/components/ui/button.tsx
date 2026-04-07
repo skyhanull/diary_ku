@@ -11,13 +11,18 @@ const buttonVariants = cva(
         default: 'bg-primary text-primary-foreground shadow-[0_12px_32px_rgba(52,50,47,0.08)] hover:brightness-[1.03]',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         outline: 'border border-border bg-card text-foreground hover:bg-secondary/70',
-        ghost: 'text-secondary-foreground hover:bg-secondary/70'
+        ghost: 'text-secondary-foreground hover:bg-secondary/70',
+        soft: 'bg-[#f8f3ef] text-[#6f5c45] hover:bg-[#efe7df]',
+        warm: 'bg-[#7d6456] text-white shadow-[0_12px_24px_rgba(125,100,86,0.28)] hover:brightness-[1.03]'
       },
       size: {
         default: 'h-10 px-4 py-2',
         sm: 'h-9 px-3',
         lg: 'h-11 px-8',
-        iconSoft: 'h-10 w-10 rounded-full'
+        iconSoft: 'h-10 w-10 rounded-full',
+        tool: 'h-11 w-11 rounded-2xl p-0',
+        iconCircle: 'h-10 w-10 rounded-full p-0',
+        pill: 'h-11 rounded-full px-6'
       }
     },
     defaultVariants: {
