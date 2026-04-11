@@ -71,27 +71,29 @@ jobs:
                 ? `${topChanges.join('\n')}${moreCount > 0 ? `\n- ...and ${moreCount} more files` : ''}`
                 : '- 변경 파일 없음';
 
-            const newBody = `## Summary
-${summaryLine}
-
-## Why
-${whyLine}
-
-## Changes
-${changesSection}
-
-## How To Test
-1. \`npm run lint\`
-2. \`npm run typecheck\`
-3. \`npm run build\`
-4. 로컬에서 변경된 화면/동작 확인
-
-## Checklist
-- [ ] lint 통과 (\`npm run lint\`)
-- [ ] typecheck 통과 (\`npm run typecheck\`)
-- [ ] build 통과 (\`npm run build\`)
-- [ ] UI 변경 시 스크린샷 첨부
-`;
+            const newBody = [
+              '## Summary',
+              summaryLine,
+              '',
+              '## Why',
+              whyLine,
+              '',
+              '## Changes',
+              changesSection,
+              '',
+              '## How To Test',
+              '1. `npm run lint`',
+              '2. `npm run typecheck`',
+              '3. `npm run build`',
+              '4. 로컬에서 변경된 화면/동작 확인',
+              '',
+              '## Checklist',
+              '- [ ] lint 통과 (`npm run lint`)',
+              '- [ ] typecheck 통과 (`npm run typecheck`)',
+              '- [ ] build 통과 (`npm run build`)',
+              '- [ ] UI 변경 시 스크린샷 첨부',
+              ''
+            ].join('\n');
 
             await github.rest.pulls.update({
               owner,
