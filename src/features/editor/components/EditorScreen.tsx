@@ -77,7 +77,6 @@ const textFontOptions = [
 ] as const;
 const shareThemeOptions: Array<{ value: SharedLetterTheme; label: string; description: string }> = [
   { value: 'paper', label: '종이 편지', description: '가장 기본적인 따뜻한 편지 무드예요.' },
-  { value: 'cream', label: '크림 카드', description: '조금 더 밝고 포근한 톤이에요.' },
   { value: 'midnight', label: '밤 편지', description: '저녁 분위기의 깊은 그라데이션이에요.' }
 ];
 const aiPromptKeywordMap: Array<{ keywords: string[]; english: string }> = [
@@ -194,7 +193,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [tutorialBubbleLayout, setTutorialBubbleLayout] = useState<TutorialBubbleLayout | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareRecipientName, setShareRecipientName] = useState('');
-  const [shareCoverMessage, setShareCoverMessage] = useState('');
   const [shareTheme, setShareTheme] = useState<SharedLetterTheme>('paper');
   const [sharedLetterUrl, setSharedLetterUrl] = useState<string | null>(null);
   const [isCreatingShare, setIsCreatingShare] = useState(false);
@@ -564,7 +562,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         items: state.items,
         background: '#fffdf9',
         recipientName: shareRecipientName.trim() || null,
-        coverMessage: shareCoverMessage.trim() || null,
+        coverMessage: null,
         theme: shareTheme
       });
 
@@ -1228,7 +1226,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
 
       {isShareModalOpen ? (
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[rgba(38,30,28,0.5)] px-4 backdrop-blur-[4px]">
-          <div className="w-full max-w-2xl overflow-hidden rounded-[32px] border border-[#eadfd7] bg-[#fff9f4] shadow-[0_28px_80px_rgba(52,50,47,0.24)]">
+          <div className="w-full max-w-xl overflow-hidden rounded-[32px] border border-[#eadfd7] bg-[#fff9f4] shadow-[0_28px_80px_rgba(52,50,47,0.24)]">
             <div className="border-b border-[#eee2d8] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.95),_rgba(244,232,223,0.9)_60%,_rgba(237,224,213,0.88))] px-7 py-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -1244,91 +1242,64 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
               </div>
             </div>
 
-            <div className="grid gap-6 px-7 py-6 md:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-5">
-                <section className="rounded-[24px] border border-[#eee2d8] bg-white/80 p-4">
-                  <label className="mb-2 block text-sm font-semibold text-[#34322f]">받는 사람</label>
-                  <Input
-                    value={shareRecipientName}
-                    onChange={(event) => setShareRecipientName(event.target.value)}
-                    placeholder="예: 미래의 나, 윤경에게"
-                    className="h-11 rounded-2xl border-[#ece7e3] bg-[#fcfaf8]"
-                  />
-                </section>
+            <div className="space-y-5 px-7 py-6">
+              <section className="rounded-[24px] border border-[#eee2d8] bg-white/80 p-4">
+                <label className="mb-2 block text-sm font-semibold text-[#34322f]">받는 사람</label>
+                <Input
+                  value={shareRecipientName}
+                  onChange={(event) => setShareRecipientName(event.target.value)}
+                  placeholder="예: 미래의 나, 윤경에게"
+                  className="h-11 rounded-2xl border-[#ece7e3] bg-[#fcfaf8]"
+                />
+              </section>
 
-                <section className="rounded-[24px] border border-[#eee2d8] bg-white/80 p-4">
-                  <label className="mb-2 block text-sm font-semibold text-[#34322f]">커버 문구</label>
-                  <textarea
-                    value={shareCoverMessage}
-                    onChange={(event) => setShareCoverMessage(event.target.value)}
-                    placeholder="예: 오늘의 기록을 편지로 전해요."
-                    className="min-h-28 w-full rounded-2xl border border-[#ece7e3] bg-[#fcfaf8] p-3 text-sm outline-none"
-                  />
-                </section>
+              <SurfaceCard tone="soft" radius="xl" className="p-4">
+                <p className="mb-3 text-sm font-semibold text-[#34322f]">편지지 무드</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {shareThemeOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setShareTheme(option.value)}
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        shareTheme === option.value
+                          ? 'border-[#8C6A5D] bg-[#f6efe8]'
+                          : 'border-[#ece7e3] bg-[#fcfaf8]'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-[#34322f]">{option.label}</p>
+                      <p className="mt-1 text-xs text-[#8C6A5D]">{option.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </SurfaceCard>
 
-                {shareMessage ? <NoticeBox tone="success">{shareMessage}</NoticeBox> : null}
-                {saveError ? <NoticeBox tone="error">{saveError}</NoticeBox> : null}
+              {shareMessage ? <NoticeBox tone="success">{shareMessage}</NoticeBox> : null}
+              {saveError ? <NoticeBox tone="error">{saveError}</NoticeBox> : null}
 
-                {sharedLetterUrl ? (
-                  <SurfaceCard tone="soft" radius="xl" className="p-4">
-                    <p className="mb-2 text-sm font-semibold text-[#34322f]">생성된 링크</p>
-                    <div className="rounded-2xl border border-[#ece7e3] bg-[#fcfaf8] px-3 py-3 text-sm text-[#6f5c45]">
-                      {sharedLetterUrl}
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm" onClick={() => void handleCopyShareLink()}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        링크 복사
-                      </Button>
-                      <Button size="sm" onClick={() => window.open(sharedLetterUrl, '_blank', 'noopener,noreferrer')}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        편지 열기
-                      </Button>
-                    </div>
-                  </SurfaceCard>
-                ) : null}
-              </div>
-
-              <div className="space-y-4">
-                <section className="rounded-[26px] border border-[#eadfd7] bg-[linear-gradient(180deg,#fbf2e8_0%,#fff9f4_55%,#f1e3d4_100%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a38977]">Envelope Preview</p>
-                  <div className="relative mt-4 h-[240px] rounded-[28px] bg-[linear-gradient(180deg,#f4e4d4_0%,#ead5c4_100%)] shadow-[0_14px_30px_rgba(68,48,36,0.12)]">
-                    <div className="absolute inset-x-5 top-5 rounded-[18px] bg-white/80 px-4 py-3 text-sm text-[#6f5c45] shadow-sm">
-                      {shareRecipientName.trim() ? `To. ${shareRecipientName.trim()}` : 'To. 아직 정해지지 않은 수신자'}
-                    </div>
-                    <div className="absolute inset-x-0 top-0 h-24 rounded-t-[28px] bg-[linear-gradient(180deg,#efddcc_0%,#f8eee5_100%)] [clip-path:polygon(0_0,100%_0,50%_100%)]" />
-                    <div className="absolute inset-x-7 bottom-7 rounded-[18px] bg-[#fffaf4] px-4 py-4 text-sm leading-6 text-[#5f534a] shadow-[0_10px_24px_rgba(68,48,36,0.12)]">
-                      {shareCoverMessage.trim() || '편지를 열고 오늘의 기록을 읽어보세요.'}
-                    </div>
-                  </div>
-                </section>
-
+              {sharedLetterUrl ? (
                 <SurfaceCard tone="soft" radius="xl" className="p-4">
-                  <p className="mb-3 text-sm font-semibold text-[#34322f]">편지 무드</p>
-                  <div className="space-y-2">
-                    {shareThemeOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setShareTheme(option.value)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                          shareTheme === option.value
-                            ? 'border-[#8C6A5D] bg-[#f6efe8]'
-                            : 'border-[#ece7e3] bg-[#fcfaf8]'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-[#34322f]">{option.label}</p>
-                        <p className="mt-1 text-xs text-[#8C6A5D]">{option.description}</p>
-                      </button>
-                    ))}
+                  <p className="mb-2 text-sm font-semibold text-[#34322f]">생성된 링크</p>
+                  <div className="rounded-2xl border border-[#ece7e3] bg-[#fcfaf8] px-3 py-3 text-sm text-[#6f5c45]">
+                    {sharedLetterUrl}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void handleCopyShareLink()}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      링크 복사
+                    </Button>
+                    <Button size="sm" onClick={() => window.open(sharedLetterUrl, '_blank', 'noopener,noreferrer')}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      편지지 열기
+                    </Button>
                   </div>
                 </SurfaceCard>
+              ) : null}
 
-                <Button className="h-12 w-full" onClick={() => void handleCreateShare()} disabled={isCreatingShare}>
-                  <Send className="mr-2 h-4 w-4" />
-                  {isCreatingShare ? '편지 생성 중...' : '편지 링크 만들기'}
-                </Button>
-              </div>
+              <Button className="h-12 w-full" onClick={() => void handleCreateShare()} disabled={isCreatingShare}>
+                <Send className="mr-2 h-4 w-4" />
+                {isCreatingShare ? '링크 생성 중...' : '편지지 링크 만들기'}
+              </Button>
             </div>
           </div>
         </div>
