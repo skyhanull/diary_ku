@@ -11,6 +11,15 @@ export interface DiaryEntrySummary {
   hasSticker?: boolean;
 }
 
+export interface MoodDistributionItem {
+  score: number;
+  emoji: string;
+  label: string;
+  count: number;
+  percentage: number;
+  color: string;
+}
+
 export interface ScheduleItem {
   id: string;
   date: string;

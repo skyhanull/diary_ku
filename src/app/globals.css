@@ -18,6 +18,12 @@
     --muted: 24 29% 92%;
     --muted-foreground: 30 4% 41%;
     --radius: 0.5rem;
+    --mood-happy: theme(colors.mood.happy);
+    --mood-calm: theme(colors.mood.calm);
+    --mood-neutral: theme(colors.mood.neutral);
+    --mood-cloudy: theme(colors.mood.cloudy);
+    --mood-sad: theme(colors.mood.sad);
+    --color-focus: theme(colors.focus);
   }
 
   * {
@@ -25,10 +31,9 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif;
-    background-image: radial-gradient(circle at top right, #f7efe8, hsl(var(--background)) 42%);
-    letter-spacing: -0.01em;
+    @apply bg-background font-sans text-ds-body text-foreground;
+    background-image: radial-gradient(circle at top right, theme(colors.cedar.soft), hsl(var(--background)) 42%);
+    letter-spacing: 0;
   }
 
   h1,
@@ -37,13 +42,13 @@
   h4,
   h5,
   h6 {
-    font-family: "Epilogue", "Pretendard", sans-serif;
+    @apply font-display;
   }
 }
 
 .diary-editor-content {
   min-height: 100%;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.8;
   color: inherit;
   outline: none;

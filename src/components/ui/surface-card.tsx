@@ -8,8 +8,8 @@ interface SurfaceCardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const toneClasses = {
-  default: 'border border-[#ece7e3] bg-white',
-  soft: 'border border-[#eee2d8] bg-white/80',
+  default: 'border border-line bg-white',
+  soft: 'border border-line-soft bg-white/80',
   overlay: 'border border-white/40 bg-white/45 backdrop-blur'
 } as const;
 

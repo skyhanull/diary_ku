@@ -10,6 +10,9 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 type AuthMode = 'signin' | 'signup';
 
+const defaultTestAccountEmail = process.env.NEXT_PUBLIC_TEST_ACCOUNT_EMAIL ?? 'test1234@naver.com';
+const defaultTestAccountPassword = process.env.NEXT_PUBLIC_TEST_ACCOUNT_PASSWORD ?? 'test1234';
+
 export default function AuthPage() {
   return (
     <Suspense fallback={<AuthPageFallback />}>
@@ -35,8 +38,8 @@ function AuthPageContent() {
   const redirectPath = next.startsWith('/') ? next : '/';
 
   const [mode, setMode] = useState<AuthMode>('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(defaultTestAccountEmail);
+  const [password, setPassword] = useState(defaultTestAccountPassword);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -125,7 +128,7 @@ function AuthPageContent() {
     <main className="min-h-screen bg-[#fdf8f5] px-6 py-16 text-[#34322f]">
       <div className="mx-auto max-w-[960px] overflow-hidden rounded-[32px] border border-[#ece7e3] bg-white shadow-[0_24px_60px_rgba(52,50,47,0.08)] md:grid md:grid-cols-[1.1fr_0.9fr]">
         <section className="bg-[#f8f3ef] px-8 py-10 md:px-10 md:py-14">
-          <p className="font-['Epilogue'] text-sm font-bold uppercase tracking-[0.24em] text-[#8C6A5D]">DearMe</p>
+          <p className="font-['Epilogue'] text-sm font-bold uppercase tracking-[0.24em] text-[#8C6A5D]">Memolie</p>
           <h1 className="mt-4 font-['Epilogue'] text-4xl font-bold tracking-tight text-[#34322f]">기록을 남기고, 다시 열어보는 공간</h1>
           <p className="mt-4 max-w-md text-base leading-7 text-[#6f5c45]">
             회원가입을 하면 날짜별 일기와 꾸미기 요소를 내 계정에 저장할 수 있어요. 로그인 후에는 같은 날짜 일기를 다시 열어 이어서 쓸 수 있습니다.

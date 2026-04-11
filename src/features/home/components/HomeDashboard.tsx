@@ -4,10 +4,18 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { MonthlyCalendar } from '@/features/home/components/MonthlyCalendar';
 import { HomeInsightsPanel } from '@/features/home/components/HomeInsightsPanel';
-import { buildCalendarDays, countMonthlyEntries, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
+import { buildCalendarDays, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
 import { createSchedule, loadMonthlySchedules, removeSchedule, updateSchedule } from '@/features/home/lib/home-schedules';
 import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/home-persistence';
-import type { DiaryEntrySummary, ScheduleItem } from '@/features/home/types/home.types';
+import type { DiaryEntrySummary, MoodDistributionItem, ScheduleItem } from '@/features/home/types/home.types';
+
+const moodDistributionMeta = [
+  { score: 100, emoji: '😄', label: '좋음', color: 'var(--mood-happy)' },
+  { score: 80, emoji: '🙂', label: '평온', color: 'var(--mood-calm)' },
+  { score: 60, emoji: '😐', label: '보통', color: 'var(--mood-neutral)' },
+  { score: 40, emoji: '🙁', label: '흐림', color: 'var(--mood-cloudy)' },
+  { score: 20, emoji: '😢', label: '슬픔', color: 'var(--mood-sad)' }
+] as const;
 
 function formatSelectedDate(date: Date) {
   return new Intl.DateTimeFormat('ko-KR', {
@@ -15,6 +23,27 @@ function formatSelectedDate(date: Date) {
     day: 'numeric',
     weekday: 'short'
   }).format(date);
+}
+
+function buildMonthlyMoodDistribution(entries: DiaryEntrySummary[]): MoodDistributionItem[] {
+  const scoreCounts = new Map<number, number>();
+
+  for (const entry of entries) {
+    if (entry.moodScore === undefined) continue;
+    scoreCounts.set(entry.moodScore, (scoreCounts.get(entry.moodScore) ?? 0) + 1);
+  }
+
+  const total = [...scoreCounts.values()].reduce((sum, count) => sum + count, 0);
+
+  return moodDistributionMeta.map((item) => {
+    const count = scoreCounts.get(item.score) ?? 0;
+
+    return {
+      ...item,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0
+    };
+  });
 }
 
 export function HomeDashboard() {
@@ -96,7 +125,7 @@ export function HomeDashboard() {
 
   const selectedEntry = useMemo(() => getSelectedEntry(selectedDate, entries), [entries, selectedDate]);
   const selectedSchedules = useMemo(() => schedules.filter((schedule) => schedule.date === toDateKey(selectedDate)), [schedules, selectedDate]);
-  const monthlyCount = useMemo(() => countMonthlyEntries(visibleMonth, entries), [entries, visibleMonth]);
+  const monthlyMoodDistribution = useMemo(() => buildMonthlyMoodDistribution(entries), [entries]);
 
   const handleAddSchedule = async (input: { date: string; title: string; note?: string }) => {
     setIsScheduleSaving(true);
@@ -147,13 +176,11 @@ export function HomeDashboard() {
   };
 
   return (
-    <main className="mx-auto grid max-w-[1440px] grid-cols-12 gap-8 px-6 pb-12 pt-8 lg:px-8">
+    <main className="mx-auto grid max-w-[1440px] grid-cols-12 gap-ds-8 px-ds-page pb-ds-12 pt-ds-8 lg:px-ds-page-lg">
       <MonthlyCalendar
         monthLabel={monthLabel(visibleMonth)}
         yearLabel={yearLabel(visibleMonth)}
         days={calendarDays}
-        monthlyRecordCount={monthlyCount}
-        selectedDateKey={toDateKey(selectedDate)}
         onSelectDate={setSelectedDate}
         onPrevMonth={() => moveMonth(-1)}
         onNextMonth={() => moveMonth(1)}
@@ -162,13 +189,13 @@ export function HomeDashboard() {
           setSelectedDate(today);
           setIsScheduleComposerOpen(false);
         }}
-        onRequestAddSchedule={() => setIsScheduleComposerOpen(true)}
       />
 
       <HomeInsightsPanel
         selectedDate={selectedDate}
         selectedDateLabel={formatSelectedDate(selectedDate)}
         selectedEntry={selectedEntry}
+        monthlyMoodDistribution={monthlyMoodDistribution}
         selectedSchedules={selectedSchedules}
         onAddSchedule={handleAddSchedule}
         onUpdateSchedule={handleUpdateSchedule}

@@ -1,6 +1,6 @@
 # Editor Supabase Schema SQL
 
-아래 SQL은 현재 DearMe 에디터 데이터 모델 규칙을 기준으로 정리한 초안이다.
+아래 SQL은 현재 Memolie 에디터 데이터 모델 규칙을 기준으로 정리한 초안이다.
 
 ## Schema SQL
 

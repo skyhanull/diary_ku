@@ -7,14 +7,14 @@ interface NoticeBoxProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const toneClasses = {
-  info: 'bg-[#f8f3ef] text-[#8C6A5D]',
-  success: 'bg-[#f3f0ea] text-[#8C6A5D]',
-  error: 'bg-[#fff1ef] text-[#a83836]',
-  overlay: 'bg-white/70 text-[#6f5c45] backdrop-blur'
+  info: 'bg-oatmeal text-cedar',
+  success: 'bg-oatmeal text-cedar',
+  error: 'bg-rose-pale text-rose-danger',
+  overlay: 'bg-white/70 text-ink-warm backdrop-blur'
 } as const;
 
 function NoticeBox({ tone = 'info', className, ...props }: NoticeBoxProps) {
-  return <div className={cn('rounded-2xl px-4 py-3 text-sm', toneClasses[tone], className)} {...props} />;
+  return <div className={cn('rounded-2xl px-ds-4 py-ds-3 text-ds-body', toneClasses[tone], className)} {...props} />;
 }
 
 export { NoticeBox };

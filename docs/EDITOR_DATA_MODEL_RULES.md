@@ -1,7 +1,7 @@
 # Editor Data Model Rules
 
 ## Purpose
-이 문서는 DearMe 에디터의 데이터 모델과 저장 구조에 대한 현재 확정 규칙을 정리한다.
+이 문서는 Memolie 에디터의 데이터 모델과 저장 구조에 대한 현재 확정 규칙을 정리한다.
 특히 날짜 기반 일기, 캔버스 아이템, Supabase 저장 전략을 구현할 때 기준으로 사용한다.
 
 ## Current Decisions

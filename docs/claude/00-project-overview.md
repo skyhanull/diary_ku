@@ -1,13 +1,13 @@
 # Project Overview
 
 ## Product
-- Name: DearMe
+- Name: Memolie
 - Type: digital diary web app
 - Stage: MVP
 - Core value: users should be able to decorate, save, and revisit diary pages with minimal friction
 
 ## Product Intent
-DearMe is not a generic memo app.
+Memolie is not a generic memo app.
 It is a decorating-first diary product where visual editing matters as much as data persistence.
 The product should feel warm, approachable, and expressive, while still remaining easy to use.
 
