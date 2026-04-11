@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MonthlyCalendar } from '@/features/home/components/MonthlyCalendar';
 import { HomeInsightsPanel } from '@/features/home/components/HomeInsightsPanel';
 import { buildCalendarDays, countMonthlyEntries, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
-import { createSchedule, loadSchedules, removeSchedule, saveSchedules, updateSchedule } from '@/features/home/lib/home-schedules';
+import { createSchedule, loadMonthlySchedules, removeSchedule, updateSchedule } from '@/features/home/lib/home-schedules';
 import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/home-persistence';
 import type { DiaryEntrySummary, ScheduleItem } from '@/features/home/types/home.types';
 
@@ -24,6 +24,8 @@ export function HomeDashboard() {
   const [entries, setEntries] = useState<DiaryEntrySummary[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [isScheduleComposerOpen, setIsScheduleComposerOpen] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [isScheduleSaving, setIsScheduleSaving] = useState(false);
 
   const moveMonth = (offset: number) => {
     const nextMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
@@ -56,8 +58,29 @@ export function HomeDashboard() {
   }, [visibleMonth]);
 
   useEffect(() => {
-    setSchedules(loadSchedules());
-  }, []);
+    let cancelled = false;
+
+    const syncSchedules = async () => {
+      try {
+        const nextSchedules = await loadMonthlySchedules(visibleMonth);
+        if (!cancelled) {
+          setSchedules(nextSchedules);
+          setScheduleError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSchedules([]);
+          setScheduleError(error instanceof Error ? error.message : '일정을 불러오는 중 문제가 발생했어요.');
+        }
+      }
+    };
+
+    void syncSchedules();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleMonth]);
 
   const calendarDays = useMemo(
     () =>
@@ -75,28 +98,52 @@ export function HomeDashboard() {
   const selectedSchedules = useMemo(() => schedules.filter((schedule) => schedule.date === toDateKey(selectedDate)), [schedules, selectedDate]);
   const monthlyCount = useMemo(() => countMonthlyEntries(visibleMonth, entries), [entries, visibleMonth]);
 
-  const handleAddSchedule = (input: { date: string; title: string; note?: string }) => {
-    const nextSchedules = [...schedules, createSchedule(input)].sort((left, right) => {
-      return left.date.localeCompare(right.date, 'ko');
-    });
+  const handleAddSchedule = async (input: { date: string; title: string; note?: string }) => {
+    setIsScheduleSaving(true);
+    setScheduleError(null);
 
-    setSchedules(nextSchedules);
-    saveSchedules(nextSchedules);
+    try {
+      const createdSchedule = await createSchedule(input);
+      setSchedules((prev) =>
+        [...prev, createdSchedule].sort((left, right) => left.date.localeCompare(right.date, 'ko'))
+      );
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : '일정을 저장하는 중 문제가 발생했어요.');
+    } finally {
+      setIsScheduleSaving(false);
+    }
   };
 
-  const handleUpdateSchedule = (scheduleId: string, input: { date: string; title: string; note?: string }) => {
-    const nextSchedules = updateSchedule(schedules, scheduleId, input).sort((left, right) => {
-      return left.date.localeCompare(right.date, 'ko');
-    });
+  const handleUpdateSchedule = async (scheduleId: string, input: { date: string; title: string; note?: string }) => {
+    setIsScheduleSaving(true);
+    setScheduleError(null);
 
-    setSchedules(nextSchedules);
-    saveSchedules(nextSchedules);
+    try {
+      const updatedSchedule = await updateSchedule(scheduleId, input);
+      setSchedules((prev) =>
+        prev
+          .map((schedule) => (schedule.id === scheduleId ? updatedSchedule : schedule))
+          .sort((left, right) => left.date.localeCompare(right.date, 'ko'))
+      );
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : '일정을 수정하는 중 문제가 발생했어요.');
+    } finally {
+      setIsScheduleSaving(false);
+    }
   };
 
-  const handleDeleteSchedule = (scheduleId: string) => {
-    const nextSchedules = removeSchedule(schedules, scheduleId);
-    setSchedules(nextSchedules);
-    saveSchedules(nextSchedules);
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    setIsScheduleSaving(true);
+    setScheduleError(null);
+
+    try {
+      await removeSchedule(scheduleId);
+      setSchedules((prev) => prev.filter((schedule) => schedule.id !== scheduleId));
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : '일정을 삭제하는 중 문제가 발생했어요.');
+    } finally {
+      setIsScheduleSaving(false);
+    }
   };
 
   return (
@@ -126,6 +173,8 @@ export function HomeDashboard() {
         onAddSchedule={handleAddSchedule}
         onUpdateSchedule={handleUpdateSchedule}
         onDeleteSchedule={handleDeleteSchedule}
+        scheduleError={scheduleError}
+        isScheduleSaving={isScheduleSaving}
         isScheduleComposerOpen={isScheduleComposerOpen}
         onOpenScheduleComposer={() => setIsScheduleComposerOpen(true)}
         onCloseScheduleComposer={() => setIsScheduleComposerOpen(false)}

@@ -5,11 +5,13 @@ export type PageSide = 'single' | 'left' | 'right';
 export type EditorItemType = 'text' | 'sticker' | 'image' | 'gif';
 export type EditorEntryStatus = 'draft' | 'saved' | 'published';
 export type EditorAssetSource = 'upload' | 'library' | 'ai';
+export type SharedLetterTheme = 'paper' | 'cream' | 'midnight';
 
 export interface TextPayload {
   content: string;
   fontSize: number;
   color: string;
+  fontFamily?: string;
 }
 
 export interface EditorItemPayload {
@@ -95,6 +97,38 @@ export interface SaveEditorSessionInput {
   items: EditorItem[];
 }
 
+export interface SharedLetterSnapshot {
+  entryDate: string;
+  title: string | null;
+  bodyHtml: string | null;
+  background: string;
+  items: EditorItem[];
+  viewMode: 'single';
+}
+
+export interface CreateSharedLetterInput extends SaveEditorSessionInput {
+  background?: string;
+  recipientName?: string | null;
+  coverMessage?: string | null;
+  theme?: SharedLetterTheme;
+  isPublic?: boolean;
+}
+
+export interface SharedLetterRecord {
+  id: string;
+  entryId: string;
+  userId: string;
+  shareToken: string;
+  title: string | null;
+  recipientName: string | null;
+  coverMessage: string | null;
+  snapshot: SharedLetterSnapshot;
+  theme: SharedLetterTheme;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DiaryEntryRow {
   id: string;
   user_id: string;
@@ -123,6 +157,21 @@ export interface EditorItemRow {
   z_index: number;
   opacity: number | string;
   payload: EditorItemPayload | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SharedLetterRow {
+  id: string;
+  entry_id: string;
+  user_id: string;
+  share_token: string;
+  title: string | null;
+  recipient_name: string | null;
+  cover_message: string | null;
+  snapshot_json: SharedLetterSnapshot | null;
+  theme: SharedLetterTheme;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }

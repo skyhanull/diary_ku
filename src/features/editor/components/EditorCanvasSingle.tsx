@@ -28,9 +28,13 @@ interface EditorCanvasSingleProps {
   onDiaryDateChange?: (value: string) => void;
   dailyExpense?: string;
   onDailyExpenseChange?: (value: string) => void;
+  textToolbar?: EditorItem | null;
   onSelectItem: (itemId: string | null) => void;
   onMoveItem: (itemId: string, x: number, y: number) => void;
   onResizeItem?: (itemId: string, width: number, height: number) => void;
+  onUpdateTextFontSize?: (itemId: string, fontSize: number) => void;
+  onUpdateTextColor?: (itemId: string, color: string) => void;
+  onDeleteItem?: (itemId: string) => void;
   onDropAddItem: (input: CreateEditorItemInput) => void;
   onPlaceTextAt: (x: number, y: number) => void;
   notebookTheme?: {
@@ -63,6 +67,14 @@ interface InteractionState {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function getPreviewHtml(html: string) {
+  if (!html || html.trim() === '') {
+    return '<p>오늘의 기록을 시작해보세요.</p>';
+  }
+
+  return html;
 }
 
 const HANDLE_POSITIONS: Record<ResizeHandle, string> = {
@@ -100,9 +112,13 @@ export function EditorCanvasSingle({
   onDiaryDateChange,
   dailyExpense = '',
   onDailyExpenseChange,
+  textToolbar,
   onSelectItem,
   onMoveItem,
   onResizeItem,
+  onUpdateTextFontSize,
+  onUpdateTextColor,
+  onDeleteItem,
   onDropAddItem,
   onPlaceTextAt,
   notebookTheme
@@ -296,7 +312,7 @@ export function EditorCanvasSingle({
 
     const handleGlobalPointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
-      if (!target?.closest('[data-sticker]') && !target?.closest('[data-resize-handle]')) {
+      if (!target?.closest('[data-sticker]') && !target?.closest('[data-resize-handle]') && !target?.closest('[data-editor-toolbar]')) {
         resetInteraction();
       }
     };
@@ -612,6 +628,7 @@ export function EditorCanvasSingle({
   }
 
   const allItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
+  const previewHtml = getPreviewHtml(diaryText);
 
   return (
     <section className="rounded-xl border bg-card p-4">
@@ -626,12 +643,71 @@ export function EditorCanvasSingle({
         <div className="origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
           <div
             ref={pageRef}
-            className="relative aspect-[3/4] w-[430px] overflow-hidden rounded-xl border-2 bg-white shadow-lg"
+            className="relative aspect-[3/4] w-[700px] overflow-hidden rounded-xl border-2 bg-white shadow-lg"
             style={{ backgroundColor: background }}
             onClick={handleCanvasClick}
             onDragOver={(event) => event.preventDefault()}
             onDrop={handleDrop}
           >
+            <div className="absolute inset-x-0 top-0 z-0 min-h-[430px] border-b border-[#f0e6dd] bg-[linear-gradient(180deg,#fffaf4_0%,#fffdf9_100%)] px-7 pb-8 pt-7">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#b39a88]">Diary Body</p>
+              {diaryDate ? <p className="mt-2 text-sm font-semibold text-[#6f5c45]">{diaryDate}</p> : null}
+              <div
+                className="mt-4 max-h-[340px] w-full overflow-hidden whitespace-pre-wrap break-words text-[16px] leading-8 text-[#4f473f] [&_p]:mb-3 [&_p:last-child]:mb-0"
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            </div>
+
+            {textToolbar ? (
+              <div
+                data-editor-toolbar
+                className="absolute right-3 top-3 z-30 flex items-center gap-2 rounded-full border border-[#e9ddd3] bg-white/95 px-3 py-2 shadow-[0_10px_30px_rgba(52,50,47,0.12)] backdrop-blur"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className="text-xs font-semibold text-[#8C6A5D]">텍스트</span>
+                <button
+                  type="button"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-[#f8f3ef] text-[#6f5c45]"
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onClick={() => onUpdateTextFontSize?.(textToolbar.id, Math.max(12, (textToolbar.payload.text?.fontSize ?? 18) - 2))}
+                >
+                  -
+                </button>
+                <span className="min-w-9 text-center text-xs font-semibold text-[#34322f]">{textToolbar.payload.text?.fontSize ?? 18}</span>
+                <button
+                  type="button"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-[#f8f3ef] text-[#6f5c45]"
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onClick={() => onUpdateTextFontSize?.(textToolbar.id, Math.min(72, (textToolbar.payload.text?.fontSize ?? 18) + 2))}
+                >
+                  +
+                </button>
+                <input
+                  type="color"
+                  value={textToolbar.payload.text?.color ?? '#4F3328'}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onChange={(event) => onUpdateTextColor?.(textToolbar.id, event.target.value)}
+                  className="h-8 w-10 cursor-pointer rounded border border-[#ece7e3] bg-white p-1"
+                />
+                <button
+                  type="button"
+                  className="rounded-full bg-[#fbe4df] px-3 py-1 text-xs font-semibold text-[#a83836]"
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onClick={() => onDeleteItem?.(textToolbar.id)}
+                >
+                  삭제
+                </button>
+              </div>
+            ) : null}
+
             {allItems.map((item) => {
               const isSelected = selectedItemId === item.id;
               return (
@@ -655,7 +731,11 @@ export function EditorCanvasSingle({
                   {item.type === 'text' ? (
                     <div
                       className="h-full w-full whitespace-pre-wrap break-words rounded bg-white/80 p-2"
-                      style={{ fontSize: item.payload.text?.fontSize ?? 16, color: item.payload.text?.color ?? '#111827' }}
+                      style={{
+                        fontSize: item.payload.text?.fontSize ?? 16,
+                        color: item.payload.text?.color ?? '#111827',
+                        fontFamily: item.payload.text?.fontFamily ?? 'inherit'
+                      }}
                     >
                       {item.payload.text?.content ?? '텍스트'}
                     </div>
@@ -667,6 +747,23 @@ export function EditorCanvasSingle({
                       className="h-full w-full rounded object-cover"
                     />
                   )}
+
+                  {isSelected ? (
+                    <button
+                      type="button"
+                      className="absolute -right-2 -top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-[#a83836] text-xs font-semibold text-white shadow-sm"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteItem?.(item.id);
+                      }}
+                    >
+                      x
+                    </button>
+                  ) : null}
                 </div>
               );
             })}

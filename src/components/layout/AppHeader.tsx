@@ -1,26 +1,28 @@
+'use client';
+
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Search, Sparkles, UserCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-const navItems = ['기록', '보관소', '통계', '서재'] as const;
+const navItems = ['기록'] as const;
 const navLinks = {
-  기록: '/records',
-  보관소: '/archive',
-  통계: '/stats',
-  서재: '/library'
+  기록: '/'
 } as const;
 
 interface AppHeaderProps {
   activeItem?: (typeof navItems)[number];
+  actions?: ReactNode;
+  showSearch?: boolean;
 }
 
-export function AppHeader({ activeItem = '기록' }: AppHeaderProps) {
+export function AppHeader({ activeItem = '기록', actions, showSearch = true }: AppHeaderProps) {
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[#b5b1ad]/10 bg-[#fdf8f5]/90 px-6 py-4 backdrop-blur-md lg:px-8">
-      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-4">
+    <nav className="sticky top-0 z-50 h-16 w-full border-b border-[#b5b1ad]/10 bg-[#fdf8f5]/90 px-6 backdrop-blur-md lg:px-8">
+      <div className="flex h-full w-full items-center justify-between gap-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-['Epilogue'] text-3xl font-bold tracking-tight text-[#8C6A5D]">Memolie</span>
+            <span className="font-['Epilogue'] text-3xl font-bold tracking-tight text-[#8C6A5D]">DearMe</span>
             <Sparkles className="h-4 w-4 text-[#8C6A5D]/80" />
           </Link>
 
@@ -43,14 +45,17 @@ export function AppHeader({ activeItem = '기록' }: AppHeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative hidden items-center rounded-full sm:flex">
-            <Search className="pointer-events-none absolute left-4 h-4 w-4 text-[#6f5c45]" />
-            <Input
-              type="text"
-              placeholder="기록 검색..."
-              className="h-10 w-44 rounded-full border-border/70 bg-secondary pl-10"
-            />
-          </div>
+          {actions}
+          {showSearch ? (
+            <div className="relative hidden items-center rounded-full sm:flex">
+              <Search className="pointer-events-none absolute left-4 h-4 w-4 text-[#6f5c45]" />
+              <Input
+                type="text"
+                placeholder="기록 검색..."
+                className="h-10 w-44 rounded-full border-border/70 bg-secondary pl-10"
+              />
+            </div>
+          ) : null}
 
           <Link
             href="/auth"

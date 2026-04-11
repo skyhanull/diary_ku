@@ -16,9 +16,11 @@ interface HomeInsightsPanelProps {
   selectedDateLabel: string;
   selectedEntry: DiaryEntrySummary | null;
   selectedSchedules: ScheduleItem[];
-  onAddSchedule: (input: { date: string; title: string; note?: string }) => void;
-  onUpdateSchedule: (scheduleId: string, input: { date: string; title: string; note?: string }) => void;
-  onDeleteSchedule: (scheduleId: string) => void;
+  onAddSchedule: (input: { date: string; title: string; note?: string }) => Promise<void>;
+  onUpdateSchedule: (scheduleId: string, input: { date: string; title: string; note?: string }) => Promise<void>;
+  onDeleteSchedule: (scheduleId: string) => Promise<void>;
+  scheduleError: string | null;
+  isScheduleSaving: boolean;
   isScheduleComposerOpen: boolean;
   onOpenScheduleComposer: () => void;
   onCloseScheduleComposer: () => void;
@@ -46,6 +48,8 @@ export function HomeInsightsPanel({
   onAddSchedule,
   onUpdateSchedule,
   onDeleteSchedule,
+  scheduleError,
+  isScheduleSaving,
   isScheduleComposerOpen,
   onOpenScheduleComposer,
   onCloseScheduleComposer
@@ -94,13 +98,13 @@ export function HomeInsightsPanel({
     setEditingScheduleId(null);
   }, [selectedDateKey]);
 
-  const handleSubmitSchedule = () => {
+  const handleSubmitSchedule = async () => {
     const trimmedTitle = scheduleTitle.trim();
     if (!trimmedTitle) {
       return;
     }
 
-    onAddSchedule({
+    await onAddSchedule({
       date: selectedDateKey,
       title: trimmedTitle,
       note: scheduleNote.trim() || undefined
@@ -117,7 +121,7 @@ export function HomeInsightsPanel({
     setScheduleNote(schedule.note ?? '');
   };
 
-  const handleSubmitScheduleEdit = () => {
+  const handleSubmitScheduleEdit = async () => {
     if (!editingScheduleId) {
       return;
     }
@@ -127,7 +131,7 @@ export function HomeInsightsPanel({
       return;
     }
 
-    onUpdateSchedule(editingScheduleId, {
+    await onUpdateSchedule(editingScheduleId, {
       date: selectedDateKey,
       title: trimmedTitle,
       note: scheduleNote.trim() || undefined
@@ -197,7 +201,7 @@ export function HomeInsightsPanel({
                     <button type="button" onClick={() => startEditingSchedule(schedule)} className="text-xs font-semibold text-[#8C6A5D]">
                       수정
                     </button>
-                    <button type="button" onClick={() => onDeleteSchedule(schedule.id)} className="text-xs font-semibold text-[#a83836]">
+                    <button type="button" onClick={() => void onDeleteSchedule(schedule.id)} className="text-xs font-semibold text-[#a83836]">
                       삭제
                     </button>
                   </div>
@@ -207,6 +211,8 @@ export function HomeInsightsPanel({
           ) : (
             <p className="text-sm leading-6 text-muted-foreground">아직 일정이 없어요. 약속이나 해야 할 일을 날짜와 함께 남겨둘 수 있어요.</p>
           )}
+
+          {scheduleError ? <p className="mt-3 text-sm text-[#a83836]">{scheduleError}</p> : null}
 
           {editingScheduleId ? (
             <div className="mt-4 space-y-3 rounded-lg border border-border/80 bg-card p-4">
@@ -218,8 +224,8 @@ export function HomeInsightsPanel({
                 className="min-h-24 w-full rounded-lg border border-input bg-secondary px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <div className="flex gap-2">
-                <Button className="flex-1" size="sm" onClick={handleSubmitScheduleEdit} disabled={!scheduleTitle.trim()}>
-                  일정 수정
+                <Button className="flex-1" size="sm" onClick={() => void handleSubmitScheduleEdit()} disabled={!scheduleTitle.trim() || isScheduleSaving}>
+                  {isScheduleSaving ? '수정 중...' : '일정 수정'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleCancelScheduleEdit}>
                   취소
@@ -236,8 +242,8 @@ export function HomeInsightsPanel({
                 className="min-h-24 w-full rounded-lg border border-input bg-secondary px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <div className="flex gap-2">
-                <Button className="flex-1" size="sm" onClick={handleSubmitSchedule} disabled={!scheduleTitle.trim()}>
-                  일정 저장
+                <Button className="flex-1" size="sm" onClick={() => void handleSubmitSchedule()} disabled={!scheduleTitle.trim() || isScheduleSaving}>
+                  {isScheduleSaving ? '저장 중...' : '일정 저장'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={onCloseScheduleComposer}>
                   닫기
