@@ -120,7 +120,7 @@ export function EditorCanvasSpread({
 
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>, side: 'left' | 'right') => {
     event.preventDefault();
-    const payload = event.dataTransfer.getData('application/x-dearme-item');
+    const payload = event.dataTransfer.getData('application/x-memolie-item');
     const page = side === 'left' ? leftRef.current : rightRef.current;
     if (!payload || !page) return;
 

@@ -22,7 +22,7 @@ export function AppHeader({ activeItem = '기록', actions, showSearch = true }:
       <div className="flex h-full w-full items-center justify-between gap-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-['Epilogue'] text-3xl font-bold tracking-tight text-[#8C6A5D]">DearMe</span>
+            <span className="font-['Epilogue'] text-3xl font-bold tracking-tight text-[#8C6A5D]">Memolie</span>
             <Sparkles className="h-4 w-4 text-[#8C6A5D]/80" />
           </Link>
 

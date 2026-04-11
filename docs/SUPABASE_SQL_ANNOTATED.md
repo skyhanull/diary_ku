@@ -1,4 +1,4 @@
-# Supabase SQL 주석 가이드 (DearMe)
+# Supabase SQL 주석 가이드 (Memolie)
 
 처음 실행한 SQL을 이해하기 쉽게 주석과 함께 정리한 문서.
 

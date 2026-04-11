@@ -1,7 +1,7 @@
 # Architecture And Boundaries
 
 ## Architectural Intent
-DearMe should be organized so contributors can quickly answer:
+Memolie should be organized so contributors can quickly answer:
 - where new code belongs
 - what each layer owns
 - what is shared vs feature-specific

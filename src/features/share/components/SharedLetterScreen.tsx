@@ -106,7 +106,7 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
         <div className="mb-6 flex items-center justify-between">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-4 py-2 text-sm text-[#6f5c45] backdrop-blur">
             <Mail className="h-4 w-4" />
-            DearMe Letter
+            Memolie Letter
           </div>
           <Button variant="outline" size="sm" onClick={handleCopyLink}>
             <Copy className="mr-2 h-4 w-4" />

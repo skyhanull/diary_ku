@@ -64,7 +64,7 @@ export function EditorSidebar({
             draggable
             onDragStart={(event) => {
               event.dataTransfer.setData(
-                'application/x-dearme-item',
+                'application/x-memolie-item',
                 toDragPayload({
                   type: 'text',
                   pageSide: baseSide,
@@ -104,7 +104,7 @@ export function EditorSidebar({
             draggable
             onDragStart={(event) => {
               event.dataTransfer.setData(
-                'application/x-dearme-item',
+                'application/x-memolie-item',
                 toDragPayload({
                   type: 'sticker',
                   pageSide: baseSide,
@@ -136,7 +136,7 @@ export function EditorSidebar({
             draggable
             onDragStart={(event) => {
               event.dataTransfer.setData(
-                'application/x-dearme-item',
+                'application/x-memolie-item',
                 toDragPayload({
                   type: 'image',
                   pageSide: baseSide,

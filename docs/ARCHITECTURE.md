@@ -1,7 +1,7 @@
 # Architecture Guide
 
 ## Purpose
-This document defines the working architecture for DearMe.
+This document defines the working architecture for Memolie.
 It is meant to help contributors decide:
 - where new code should live
 - what each layer is responsible for
@@ -9,7 +9,7 @@ It is meant to help contributors decide:
 - which patterns to avoid
 
 ## System Overview
-DearMe is a Next.js App Router application centered on a diary editor experience.
+Memolie is a Next.js App Router application centered on a diary editor experience.
 
 Main areas:
 - App routes for entry and page composition

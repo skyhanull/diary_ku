@@ -1,7 +1,7 @@
 # Editor Supabase Schema Plan
 
 ## Purpose
-이 문서는 DearMe 에디터의 Supabase 테이블 구조 초안을 정리한다.
+이 문서는 Memolie 에디터의 Supabase 테이블 구조 초안을 정리한다.
 `docs/EDITOR_DATA_MODEL_RULES.md`에서 확정한 규칙을 실제 DB 스키마로 옮기기 위한 문서다.
 
 ## What We Are Storing

@@ -211,7 +211,7 @@ export function EditorCanvasSingle({
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
 
-    const payload = event.dataTransfer.getData('application/x-dearme-item');
+    const payload = event.dataTransfer.getData('application/x-memolie-item');
     if (!payload || !pageRef.current) return;
 
     try {

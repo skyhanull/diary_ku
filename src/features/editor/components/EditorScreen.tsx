@@ -608,7 +608,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   };
 
   useEffect(() => {
-    const tutorialSeen = window.localStorage.getItem('dearme-editor-tutorial-seen');
+    const tutorialSeen = window.localStorage.getItem('memolie-editor-tutorial-seen');
     if (!tutorialSeen) {
       setIsTutorialOpen(true);
     }
@@ -693,7 +693,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const closeTutorial = (markSeen = true) => {
     setIsTutorialOpen(false);
     if (markSeen) {
-      window.localStorage.setItem('dearme-editor-tutorial-seen', 'true');
+      window.localStorage.setItem('memolie-editor-tutorial-seen', 'true');
     }
   };
 
