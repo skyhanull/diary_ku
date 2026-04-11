@@ -18,6 +18,16 @@ export interface ScheduleItem {
   note?: string;
 }
 
+export interface ScheduleRow {
+  id: string;
+  user_id: string;
+  schedule_date: string;
+  title: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CalendarDay {
   date: Date;
   day: number;
