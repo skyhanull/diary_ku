@@ -27,14 +27,12 @@ interface EditorTopBarProps {
 
 export function EditorTopBar({
   pageId,
-  viewMode,
   isSaving,
   isDirty,
   activeTool,
   zoom,
   onChangeViewMode,
   onSave,
-  onAddText,
   onAddSticker,
   onAddPhoto,
   onChangeTool,

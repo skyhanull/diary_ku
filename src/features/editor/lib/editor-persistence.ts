@@ -1,12 +1,16 @@
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type {
+  CreateSharedLetterInput,
   DiaryEntryRecord,
   DiaryEntryRow,
   EditorItem,
   EditorItemPayload,
   EditorItemRow,
   EditorSessionData,
-  SaveEditorSessionInput
+  SaveEditorSessionInput,
+  SharedLetterRecord,
+  SharedLetterRow,
+  SharedLetterSnapshot
 } from '@/features/editor/types/editor.types';
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {
@@ -61,6 +65,34 @@ function mapEditorItemToInsert(item: EditorItem, entryId: string, userId: string
     opacity: item.opacity,
     payload: item.payload
   };
+}
+
+function mapSharedLetterRow(row: SharedLetterRow): SharedLetterRecord {
+  return {
+    id: row.id,
+    entryId: row.entry_id,
+    userId: row.user_id,
+    shareToken: row.share_token,
+    title: row.title,
+    recipientName: row.recipient_name,
+    coverMessage: row.cover_message,
+    snapshot: row.snapshot_json ?? {
+      entryDate: '',
+      title: row.title,
+      bodyHtml: null,
+      background: '#fffdf9',
+      items: [],
+      viewMode: 'single'
+    },
+    theme: row.theme,
+    isPublic: row.is_public,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function createShareToken() {
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 }
 
 async function getAuthenticatedUserId() {
@@ -150,4 +182,66 @@ export async function saveEditorSession(input: SaveEditorSessionInput): Promise<
   }
 
   return loadEditorSession(input.pageId);
+}
+
+export async function createSharedLetter(input: CreateSharedLetterInput): Promise<SharedLetterRecord> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const savedSession = await saveEditorSession(input);
+  const entry = savedSession.entry;
+
+  if (!entry) {
+    throw new Error('공유할 일기를 먼저 저장해주세요.');
+  }
+
+  const snapshot: SharedLetterSnapshot = {
+    entryDate: entry.entryDate,
+    title: input.title ?? entry.title ?? null,
+    bodyHtml: input.bodyHtml ?? entry.bodyHtml ?? null,
+    background: input.background ?? '#fffdf9',
+    items: savedSession.items,
+    viewMode: 'single'
+  };
+
+  const payload = {
+    entry_id: entry.id,
+    user_id: entry.userId,
+    share_token: createShareToken(),
+    title: snapshot.title,
+    recipient_name: input.recipientName ?? null,
+    cover_message: input.coverMessage ?? null,
+    snapshot_json: snapshot,
+    theme: input.theme ?? 'paper',
+    is_public: input.isPublic ?? true
+  };
+
+  const { data, error } = await supabase
+    .from('shared_letters')
+    .insert(payload)
+    .select('*')
+    .single<SharedLetterRow>();
+
+  if (error) throw error;
+
+  return mapSharedLetterRow(data);
+}
+
+export async function loadSharedLetter(shareToken: string): Promise<SharedLetterRecord | null> {
+  if (!isSupabaseConfigured || !supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('shared_letters')
+    .select('*')
+    .eq('share_token', shareToken)
+    .eq('is_public', true)
+    .maybeSingle<SharedLetterRow>();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return mapSharedLetterRow(data);
 }
