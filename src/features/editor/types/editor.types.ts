@@ -1,5 +1,9 @@
 export type EditorViewMode = 'single' | 'spread';
 
+export type EditorTool = 'select' | 'text' | 'sticker' | 'image';
+
+export type EditorSidePanel = 'base' | 'text' | 'sticker' | 'media';
+
 export type PageSide = 'single' | 'left' | 'right';
 
 export type EditorItemType = 'text' | 'sticker' | 'image' | 'gif';

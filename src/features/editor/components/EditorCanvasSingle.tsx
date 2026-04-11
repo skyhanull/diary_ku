@@ -8,12 +8,12 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 
-import type { EditorTool } from '@/features/editor/components/EditorTopBar';
-import type { CreateEditorItemInput, EditorItem } from '@/features/editor/types/editor.types';
+import type { CreateEditorItemInput, EditorItem, EditorTool } from '@/features/editor/types/editor.types';
 
 const MARGIN_LEFT = 24;
 const TOP_PADDING = 24;
 const HEADER_HEIGHT = 88;
+const defaultTextItemFontSize = 16;
 
 interface EditorCanvasSingleProps {
   background: string;
@@ -91,7 +91,7 @@ function SelectionHandles({ onResizeStart }: { onResizeStart: (event: ReactPoint
         <span
           key={handle}
           data-resize-handle={handle}
-          className={`absolute h-3.5 w-3.5 rounded border border-[#2563eb] bg-white ${HANDLE_POSITIONS[handle]}`}
+          className={`absolute h-3.5 w-3.5 rounded border border-focus bg-white ${HANDLE_POSITIONS[handle]}`}
           onPointerDown={(event) => onResizeStart(event, handle)}
         />
       ))}
@@ -489,7 +489,7 @@ export function EditorCanvasSingle({
           <div
             className="relative h-full w-full"
             style={{
-              border: isSelected ? '2px dashed #2563eb' : '2px solid transparent',
+              border: isSelected ? '2px dashed var(--color-focus)' : '2px solid transparent',
               borderRadius: '12px',
               backgroundColor: 'transparent'
             }}
@@ -631,7 +631,7 @@ export function EditorCanvasSingle({
   const previewHtml = getPreviewHtml(diaryText);
 
   return (
-    <section className="rounded-xl border bg-card p-4">
+    <section className="rounded-xl border bg-card p-ds-4">
       <div
         className="grid min-h-[620px] place-items-center rounded-xl border"
         style={{
@@ -649,11 +649,11 @@ export function EditorCanvasSingle({
             onDragOver={(event) => event.preventDefault()}
             onDrop={handleDrop}
           >
-            <div className="absolute inset-x-0 top-0 z-0 min-h-[430px] border-b border-[#f0e6dd] bg-[linear-gradient(180deg,#fffaf4_0%,#fffdf9_100%)] px-7 pb-8 pt-7">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#b39a88]">Diary Body</p>
-              {diaryDate ? <p className="mt-2 text-sm font-semibold text-[#6f5c45]">{diaryDate}</p> : null}
+            <div className="absolute inset-x-0 top-0 z-0 min-h-[430px] border-b border-line-pale bg-gradient-to-b from-paper-cream to-paper-warm px-ds-7 pb-ds-8 pt-ds-7">
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.24em] text-cedar/70">Diary Body</p>
+              {diaryDate ? <p className="mt-ds-2 text-ds-body font-semibold text-ink-warm">{diaryDate}</p> : null}
               <div
-                className="mt-4 max-h-[340px] w-full overflow-hidden whitespace-pre-wrap break-words text-[16px] leading-8 text-[#4f473f] [&_p]:mb-3 [&_p:last-child]:mb-0"
+                className="mt-ds-4 max-h-[340px] w-full overflow-hidden whitespace-pre-wrap break-words text-ds-body text-ink-soft [&_p]:mb-ds-3 [&_p:last-child]:mb-0"
                 dangerouslySetInnerHTML={{ __html: previewHtml }}
               />
             </div>
@@ -661,28 +661,28 @@ export function EditorCanvasSingle({
             {textToolbar ? (
               <div
                 data-editor-toolbar
-                className="absolute right-3 top-3 z-30 flex items-center gap-2 rounded-full border border-[#e9ddd3] bg-white/95 px-3 py-2 shadow-[0_10px_30px_rgba(52,50,47,0.12)] backdrop-blur"
+                className="absolute right-3 top-3 z-30 flex items-center gap-ds-2 rounded-full border border-line-warm bg-white/95 px-ds-3 py-ds-2 shadow-[0_10px_30px_rgba(52,50,47,0.12)] backdrop-blur"
                 onClick={(event) => event.stopPropagation()}
               >
-                <span className="text-xs font-semibold text-[#8C6A5D]">텍스트</span>
+                <span className="text-ds-caption font-semibold text-cedar">텍스트</span>
                 <button
                   type="button"
-                  className="grid h-7 w-7 place-items-center rounded-full bg-[#f8f3ef] text-[#6f5c45]"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-oatmeal text-ink-warm"
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
-                  onClick={() => onUpdateTextFontSize?.(textToolbar.id, Math.max(12, (textToolbar.payload.text?.fontSize ?? 18) - 2))}
+                  onClick={() => onUpdateTextFontSize?.(textToolbar.id, Math.max(12, (textToolbar.payload.text?.fontSize ?? defaultTextItemFontSize) - 2))}
                 >
                   -
                 </button>
-                <span className="min-w-9 text-center text-xs font-semibold text-[#34322f]">{textToolbar.payload.text?.fontSize ?? 18}</span>
+                <span className="min-w-9 text-center text-ds-caption font-semibold text-ink">{textToolbar.payload.text?.fontSize ?? defaultTextItemFontSize}</span>
                 <button
                   type="button"
-                  className="grid h-7 w-7 place-items-center rounded-full bg-[#f8f3ef] text-[#6f5c45]"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-oatmeal text-ink-warm"
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
-                  onClick={() => onUpdateTextFontSize?.(textToolbar.id, Math.min(72, (textToolbar.payload.text?.fontSize ?? 18) + 2))}
+                  onClick={() => onUpdateTextFontSize?.(textToolbar.id, Math.min(72, (textToolbar.payload.text?.fontSize ?? defaultTextItemFontSize) + 2))}
                 >
                   +
                 </button>
@@ -693,11 +693,11 @@ export function EditorCanvasSingle({
                     event.stopPropagation();
                   }}
                   onChange={(event) => onUpdateTextColor?.(textToolbar.id, event.target.value)}
-                  className="h-8 w-10 cursor-pointer rounded border border-[#ece7e3] bg-white p-1"
+                  className="h-8 w-10 cursor-pointer rounded border border-line bg-white p-1"
                 />
                 <button
                   type="button"
-                  className="rounded-full bg-[#fbe4df] px-3 py-1 text-xs font-semibold text-[#a83836]"
+                  className="rounded-full bg-rose-soft px-ds-3 py-ds-1 text-ds-caption font-semibold text-rose-danger"
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
@@ -730,7 +730,7 @@ export function EditorCanvasSingle({
                 >
                   {item.type === 'text' ? (
                     <div
-                      className="h-full w-full whitespace-pre-wrap break-words rounded bg-white/80 p-2"
+                      className="h-full w-full whitespace-pre-wrap break-words rounded bg-white/80 p-ds-2"
                       style={{
                         fontSize: item.payload.text?.fontSize ?? 16,
                         color: item.payload.text?.color ?? '#111827',
@@ -751,7 +751,7 @@ export function EditorCanvasSingle({
                   {isSelected ? (
                     <button
                       type="button"
-                      className="absolute -right-2 -top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-[#a83836] text-xs font-semibold text-white shadow-sm"
+                      className="absolute -right-2 -top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-rose-danger text-ds-caption font-semibold text-white shadow-sm"
                       onPointerDown={(event) => {
                         event.preventDefault();
                         event.stopPropagation();

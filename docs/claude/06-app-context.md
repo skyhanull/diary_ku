@@ -23,7 +23,6 @@ The app layer is the route and composition layer, not the main home for product 
 - `src/app/auth/page.tsx`: auth UI route
 - `src/app/auth/callback/route.ts`: auth callback route handler
 - `src/app/editor/[pageId]/page.tsx`: editor route entry
-- `src/app/ai-sticker-test/page.tsx`: AI test route
 
 ## Page File Rules
 - keep page files easy to scan

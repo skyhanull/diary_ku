@@ -10,6 +10,9 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 type AuthMode = 'signin' | 'signup';
 
+const defaultTestAccountEmail = process.env.NEXT_PUBLIC_TEST_ACCOUNT_EMAIL ?? 'test1234@naver.com';
+const defaultTestAccountPassword = process.env.NEXT_PUBLIC_TEST_ACCOUNT_PASSWORD ?? 'test1234';
+
 export default function AuthPage() {
   return (
     <Suspense fallback={<AuthPageFallback />}>
@@ -35,8 +38,8 @@ function AuthPageContent() {
   const redirectPath = next.startsWith('/') ? next : '/';
 
   const [mode, setMode] = useState<AuthMode>('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(defaultTestAccountEmail);
+  const [password, setPassword] = useState(defaultTestAccountPassword);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

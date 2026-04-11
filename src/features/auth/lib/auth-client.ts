@@ -44,3 +44,10 @@ export async function signUpWithEmail(input: { email: string; password: string; 
   if (error) throw error;
   return data;
 }
+
+export async function signOutCurrentUser() {
+  const client = getSupabaseClient();
+  const { error } = await client.auth.signOut();
+
+  if (error) throw error;
+}

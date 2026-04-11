@@ -33,7 +33,6 @@ Main areas:
 src/
   app/
     auth/
-    ai-sticker-test/
     editor/[pageId]/
     page.tsx
 

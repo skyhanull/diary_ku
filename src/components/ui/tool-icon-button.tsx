@@ -13,7 +13,7 @@ const ToolIconButton = React.forwardRef<HTMLButtonElement, ToolIconButtonProps>(
       ref={ref}
       variant="ghost"
       size="tool"
-      className={cn(active ? 'bg-[#e7e2dd] text-[#8C6A5D] hover:bg-[#e7e2dd]' : 'text-[#6f5c45] hover:bg-[#efe7df]', className)}
+      className={cn(active ? 'bg-cedar-mist text-cedar hover:bg-cedar-mist' : 'text-ink-warm hover:bg-cedar-soft', className)}
       {...props}
     />
   );

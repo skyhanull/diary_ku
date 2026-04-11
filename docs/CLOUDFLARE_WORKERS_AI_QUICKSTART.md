@@ -2,7 +2,7 @@
 
 ## 목표
 - Cloudflare에서 스티커 1장 생성
-- Next.js 웹(`/ai-sticker-test`)에서 결과 확인
+- Next.js 에디터의 AI 스티커 패널에서 결과 확인
 
 ## 1) Worker 배포
 1. Cloudflare 로그인
@@ -22,8 +22,8 @@ NEXT_PUBLIC_CF_WORKER_URL=https://your-worker.your-subdomain.workers.dev
 
 ## 3) 웹에서 테스트
 1. `npm run dev`
-2. `http://localhost:3000/ai-sticker-test` 접속
-3. 프롬프트 입력 후 생성
+2. 에디터 화면 접속
+3. 스티커 패널에서 프롬프트 입력 후 `AI 스티커 생성`
 
 ## 4) 확인 포인트
 - 결과 이미지가 보이면 성공
@@ -31,5 +31,4 @@ NEXT_PUBLIC_CF_WORKER_URL=https://your-worker.your-subdomain.workers.dev
 
 ## 5) 다음 단계
 1. 생성 이미지 Supabase Storage 저장
-2. diary editor 캔버스에 바로 삽입
-3. 생성 횟수 제한(비용 보호)
+2. 생성 횟수 제한(비용 보호)
