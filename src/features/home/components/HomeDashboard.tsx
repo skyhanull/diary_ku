@@ -6,8 +6,9 @@ import { MonthlyCalendar } from '@/features/home/components/MonthlyCalendar';
 import { HomeInsightsPanel } from '@/features/home/components/HomeInsightsPanel';
 import { buildCalendarDays, countMonthlyEntries, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
 import { createSchedule, loadMonthlySchedules, removeSchedule, updateSchedule } from '@/features/home/lib/home-schedules';
-import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/home-persistence';
-import type { DiaryEntrySummary, ScheduleItem } from '@/features/home/types/home.types';
+import { buildRecentMoodTrend } from '@/features/home/lib/home-mood';
+import { loadDiaryEntrySummariesByDateRange, loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/home-persistence';
+import type { DiaryEntrySummary, MoodTrendPoint, ScheduleItem } from '@/features/home/types/home.types';
 
 function formatSelectedDate(date: Date) {
   return new Intl.DateTimeFormat('ko-KR', {
@@ -22,6 +23,7 @@ export function HomeDashboard() {
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(today);
   const [entries, setEntries] = useState<DiaryEntrySummary[]>([]);
+  const [moodTrend, setMoodTrend] = useState<MoodTrendPoint[]>(() => buildRecentMoodTrend([], today));
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [isScheduleComposerOpen, setIsScheduleComposerOpen] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
@@ -56,6 +58,32 @@ export function HomeDashboard() {
       cancelled = true;
     };
   }, [visibleMonth]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncMoodTrend = async () => {
+      const rangeStart = new Date(selectedDate);
+      rangeStart.setDate(selectedDate.getDate() - 6);
+
+      try {
+        const trendEntries = await loadDiaryEntrySummariesByDateRange(rangeStart, selectedDate);
+        if (!cancelled) {
+          setMoodTrend(buildRecentMoodTrend(trendEntries, selectedDate));
+        }
+      } catch {
+        if (!cancelled) {
+          setMoodTrend(buildRecentMoodTrend([], selectedDate));
+        }
+      }
+    };
+
+    void syncMoodTrend();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,6 +197,7 @@ export function HomeDashboard() {
         selectedDate={selectedDate}
         selectedDateLabel={formatSelectedDate(selectedDate)}
         selectedEntry={selectedEntry}
+        moodTrend={moodTrend}
         selectedSchedules={selectedSchedules}
         onAddSchedule={handleAddSchedule}
         onUpdateSchedule={handleUpdateSchedule}

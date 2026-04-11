@@ -1,20 +1,3 @@
-import type { DiaryEntrySummary } from '@/features/home/types/home.types';
-
-export const diaryEntries: DiaryEntrySummary[] = [
-  { id: 'entry-2024-10-01', date: '2024-10-01', status: 'draft', moodScore: 3, hasText: true },
-  { id: 'entry-2024-10-03', date: '2024-10-03', title: '가을 산책', status: 'saved', moodScore: 4, hasPhoto: true, hasText: true },
-  { id: 'entry-2024-10-05', date: '2024-10-05', status: 'draft', moodScore: 2, hasSticker: true },
-  { id: 'entry-2024-10-07', date: '2024-10-07', title: '아침 산책', status: 'published', moodScore: 5, hasText: true, hasPhoto: true, hasSticker: true },
-  { id: 'entry-2024-10-10', date: '2024-10-10', title: '기록 중...', status: 'draft', moodScore: 4, hasText: true },
-  { id: 'entry-2024-10-12', date: '2024-10-12', status: 'saved', moodScore: 3, hasPhoto: true },
-  { id: 'entry-2024-10-18', date: '2024-10-18', title: '조용한 밤', status: 'saved', moodScore: 4, hasText: true, hasSticker: true },
-  { id: 'entry-2024-10-23', date: '2024-10-23', status: 'draft', moodScore: 2, hasText: true },
-  { id: 'entry-2024-10-27', date: '2024-10-27', title: '작은 기쁨', status: 'published', moodScore: 5, hasPhoto: true, hasText: true },
-  { id: 'entry-2024-10-30', date: '2024-10-30', status: 'saved', moodScore: 3, hasSticker: true }
-];
-
-export const moodHistory = [60, 40, 85, 70, 95, 50, 80];
-
 const fortuneMessages = [
   '작은 기쁨을 놓치지 않을수록 오늘이 더 부드럽게 흘러가요.',
   '천천히 적어 내려간 한 줄이 마음을 예상보다 깊게 정리해줄 거예요.',

@@ -4,17 +4,18 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CalendarPlus2, Cloud, CloudRain, CloudSun, Flame, Sparkles, Sun } from 'lucide-react';
 
-import { getDailyFortune, moodHistory } from '@/features/home/lib/home-data';
+import { getDailyFortune } from '@/features/home/lib/home-data';
 import { toDateKey } from '@/features/home/lib/home-calendar';
 import { fetchWeatherForCurrentPosition } from '@/features/home/lib/home-weather';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { DiaryEntrySummary, HomeWeather, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
+import type { DiaryEntrySummary, HomeWeather, MoodTrendPoint, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
 
 interface HomeInsightsPanelProps {
   selectedDate: Date;
   selectedDateLabel: string;
   selectedEntry: DiaryEntrySummary | null;
+  moodTrend: MoodTrendPoint[];
   selectedSchedules: ScheduleItem[];
   onAddSchedule: (input: { date: string; title: string; note?: string }) => Promise<void>;
   onUpdateSchedule: (scheduleId: string, input: { date: string; title: string; note?: string }) => Promise<void>;
@@ -44,6 +45,7 @@ export function HomeInsightsPanel({
   selectedDate,
   selectedDateLabel,
   selectedEntry,
+  moodTrend,
   selectedSchedules,
   onAddSchedule,
   onUpdateSchedule,
@@ -259,18 +261,20 @@ export function HomeInsightsPanel({
         <p className="mb-6 mt-1 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">최근 7일</p>
 
         <div className="mb-4 flex h-24 items-end justify-between gap-2">
-          {moodHistory.map((height, index) => (
+          {moodTrend.map((point, index) => (
             <div
-              key={index}
-              className={`w-full rounded-t-lg transition-all ${index === moodHistory.length - 1 ? 'bg-primary' : 'bg-primary/20 hover:bg-primary/40'}`}
-              style={{ height: `${height}%` }}
+              key={point.date}
+              className={`w-full rounded-t-lg transition-all ${index === moodTrend.length - 1 ? 'bg-primary' : 'bg-primary/20 hover:bg-primary/40'} ${point.score === null ? 'opacity-25' : ''}`}
+              style={{ height: `${point.score ?? 8}%` }}
+              title={point.score === null ? `${point.date}: 기록 없음` : `${point.date}: ${point.score}점`}
             />
           ))}
         </div>
 
         <div className="flex justify-between px-1 text-[10px] font-bold text-muted-foreground/70">
-          <span>월</span>
-          <span>일</span>
+          {moodTrend.map((point) => (
+            <span key={point.date}>{point.label}</span>
+          ))}
         </div>
       </section>
 
