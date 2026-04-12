@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { getCurrentSession, signOutCurrentUser } from '@/features/auth/lib/auth-client';
 import { supabase } from '@/lib/supabase';
 
-const navItems = ['기록'] as const;
+const navItems = ['기록', '보관함'] as const;
 const navLinks = {
-  기록: '/'
+  기록: '/',
+  보관함: '/archive'
 } as const;
 
 interface AppHeaderProps {
