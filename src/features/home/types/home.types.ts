@@ -4,11 +4,17 @@ export interface DiaryEntrySummary {
   id: string;
   date: string;
   title?: string;
+  bodyText?: string;
+  mood?: string;
+  tags?: string[];
+  updatedAt?: string;
+  coverImageUrl?: string;
   status: EntryStatus;
   moodScore?: number;
   hasPhoto?: boolean;
   hasText?: boolean;
   hasSticker?: boolean;
+  itemCount?: number;
 }
 
 export interface MoodDistributionItem {
