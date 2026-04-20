@@ -13,7 +13,8 @@ import { EditorShareModal } from "@/features/editor/components/EditorShareModal"
 import { EditorSidePanel } from "@/features/editor/components/EditorSidePanel";
 import { EditorToolRail } from "@/features/editor/components/EditorToolRail";
 import { EditorTutorialOverlay, tutorialSteps, type TutorialBubbleLayout } from "@/features/editor/components/EditorTutorialOverlay";
-import { createSharedLetter, loadEditorSession, saveEditorSession } from "@/features/editor/lib/editor-persistence";
+import { loadEditorSession } from "@/features/editor/lib/editor-persistence";
+import { useEditorPersistenceActions } from "@/features/editor/hooks/useEditorPersistenceActions";
 import { useEditorState } from "@/features/editor/hooks/useEditorState";
 import type { CreateEditorItemInput, EditorSidePanel as EditorSidePanelName, EditorTool, SharedLetterTheme } from "@/features/editor/types/editor.types";
 
@@ -84,8 +85,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [lastSavedBodyText, setLastSavedBodyText] = useState("오늘의 기록을 시작해보세요.");
   const [entryTags, setEntryTags] = useState<string[]>([...defaultTags]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isBodySaving, setIsBodySaving] = useState(false);
   const [isGeneratingSticker, setIsGeneratingSticker] = useState(false);
   const [isSearchingGif, setIsSearchingGif] = useState(false);
   const [stickerPreview, setStickerPreview] = useState<SearchPreviewItem | null>(null);
@@ -96,19 +95,40 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareRecipientName, setShareRecipientName] = useState("");
   const [shareTheme, setShareTheme] = useState<SharedLetterTheme>("paper");
-  const [sharedLetterUrl, setSharedLetterUrl] = useState<string | null>(null);
-  const [isCreatingShare, setIsCreatingShare] = useState(false);
-  const [shareMessage, setShareMessage] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const sidebarRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const diaryDate = useMemo(() => formatDiaryDate(pageId), [pageId]);
+  const bodyHtml = useMemo(() => buildBodyHtml(bodyText), [bodyText]);
   const isBodyDirty = bodyText !== lastSavedBodyText;
   const selectedTextItem = selectedItem?.type === "text" ? selectedItem : null;
   const tutorialStep = tutorialSteps[tutorialStepIndex];
+  const {
+    isSaving,
+    isBodySaving,
+    isCreatingShare,
+    sharedLetterUrl,
+    shareMessage,
+    saveMessage,
+    saveError,
+    setSaveMessage,
+    setSaveError,
+    handleSave,
+    handleSaveBody,
+    handleCreateShare,
+    handleCopyShareLink,
+  } = useEditorPersistenceActions({
+    pageId,
+    title: entryTitle,
+    bodyHtml,
+    bodyText,
+    mood: moodOptions[activeMood],
+    tags: entryTags,
+    items: state.items,
+    onResetDirty: resetDirty,
+    onBodySaved: setLastSavedBodyText,
+  });
 
   const addEditorItem = (input: CreateEditorItemInput) => {
     addItem({
@@ -384,103 +404,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
     return () => {
       isMounted = false;
     };
-  }, [pageId, replaceItems]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setSaveMessage(null);
-    setSaveError(null);
-
-    try {
-      await saveEditorSession({
-        pageId,
-        title: entryTitle.trim() || null,
-        bodyHtml: buildBodyHtml(bodyText),
-        mood: moodOptions[activeMood],
-        tags: entryTags,
-        viewMode: "single",
-        status: "saved",
-        items: state.items,
-      });
-
-      resetDirty();
-      setLastSavedBodyText(bodyText);
-      setSaveMessage(state.items.length > 0 ? `${pageId} 일기와 요소 ${state.items.length}개를 저장했어요.` : `${pageId} 일기를 저장했어요.`);
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "저장 중 문제가 발생했어요.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveBody = async () => {
-    setIsBodySaving(true);
-    setSaveMessage(null);
-    setSaveError(null);
-
-    try {
-      await saveEditorSession({
-        pageId,
-        title: entryTitle.trim() || null,
-        bodyHtml: buildBodyHtml(bodyText),
-        mood: moodOptions[activeMood],
-        tags: entryTags,
-        viewMode: "single",
-        status: "saved",
-        items: state.items,
-      });
-
-      setLastSavedBodyText(bodyText);
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "본문 저장 중 문제가 발생했어요.");
-    } finally {
-      setIsBodySaving(false);
-    }
-  };
-
-  const handleCreateShare = async () => {
-    setIsCreatingShare(true);
-    setSaveError(null);
-    setShareMessage(null);
-
-    try {
-      const sharedLetter = await createSharedLetter({
-        pageId,
-        title: entryTitle.trim() || null,
-        bodyHtml: buildBodyHtml(bodyText),
-        mood: moodOptions[activeMood],
-        tags: entryTags,
-        viewMode: "single",
-        status: "saved",
-        items: state.items,
-        background: "#fffdf9",
-        recipientName: shareRecipientName.trim() || null,
-        coverMessage: null,
-        theme: shareTheme,
-      });
-
-      resetDirty();
-      setLastSavedBodyText(bodyText);
-      const nextUrl = `${window.location.origin}/letter/${sharedLetter.shareToken}`;
-      setSharedLetterUrl(nextUrl);
-      setShareMessage("편지 링크를 만들었어요. 복사하거나 바로 열어볼 수 있어요.");
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "공유 링크 생성 중 문제가 발생했어요.");
-    } finally {
-      setIsCreatingShare(false);
-    }
-  };
-
-  const handleCopyShareLink = async () => {
-    if (!sharedLetterUrl) return;
-
-    try {
-      await navigator.clipboard.writeText(sharedLetterUrl);
-      setShareMessage("공유 링크를 복사했어요.");
-    } catch {
-      setShareMessage("링크 복사에 실패했어요. 다시 시도해주세요.");
-    }
-  };
+  }, [pageId, replaceItems, setSaveError, setSaveMessage]);
 
   const updateTextItem = (itemId: string, patch: Partial<NonNullable<typeof selectedTextItem>["payload"]["text"]>) => {
     const item = state.items.find((candidate) => candidate.id === itemId);
@@ -666,7 +590,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
               selectedItemId={state.selectedItemId}
               zoom={zoom}
               activeTool={activeTool}
-              diaryText={buildBodyHtml(bodyText)}
+              diaryText={bodyHtml}
               onDiaryTextChange={(html) => setBodyText(extractBodyText(html))}
               diaryDate={diaryDate}
               onDiaryDateChange={() => undefined}
@@ -742,7 +666,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           saveError={saveError}
           onChangeRecipientName={setShareRecipientName}
           onChangeTheme={setShareTheme}
-          onCreateShare={() => void handleCreateShare()}
+          onCreateShare={() => void handleCreateShare({ recipientName: shareRecipientName, theme: shareTheme })}
           onCopyShareLink={() => void handleCopyShareLink()}
           onClose={() => setIsShareModalOpen(false)}
         />
