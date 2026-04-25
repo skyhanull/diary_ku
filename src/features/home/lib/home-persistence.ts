@@ -61,7 +61,8 @@ function mapEntryRowsToSummaries(entryRows: DiaryEntrySummaryRow[], itemRows: Ed
     const hasStickerItem = items.some((item) => item.type === 'sticker');
     const coverImageUrl = items.find((item) => item.type === 'image' || item.type === 'gif')?.payload?.imageUrl;
     const itemSearchText = items
-      .flatMap((item) => [item.payload?.prompt, item.payload?.alt, item.payload?.text?.content])
+      .filter((item) => item.type === 'text')
+      .map((item) => item.payload?.text?.content)
       .filter(Boolean)
       .join(' ') || undefined;
 
