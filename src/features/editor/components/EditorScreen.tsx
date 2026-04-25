@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Send } from "lucide-react";
 
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -9,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { NoticeBox } from "@/components/ui/notice-box";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { EditorCanvasSingle } from "@/features/editor/components/EditorCanvasSingle";
-import { EditorShareModal } from "@/features/editor/components/EditorShareModal";
 import { EditorSidePanel } from "@/features/editor/components/EditorSidePanel";
 import { EditorToolRail } from "@/features/editor/components/EditorToolRail";
-import { EditorTutorialOverlay, tutorialSteps, type TutorialBubbleLayout } from "@/features/editor/components/EditorTutorialOverlay";
+import { tutorialSteps, type TutorialBubbleLayout } from "@/features/editor/components/editor-tutorial-config";
+import { createEditorBodyFromHtml, createEditorBodyFromText, DEFAULT_EDITOR_BODY_TEXT, extractEditorBodyText } from "@/features/editor/lib/editor-body";
+import { normalizeEditorImageFile } from "@/features/editor/lib/editor-image";
 import { loadEditorSession } from "@/features/editor/lib/editor-persistence";
 import { useEditorPersistenceActions } from "@/features/editor/hooks/useEditorPersistenceActions";
 import { useEditorState } from "@/features/editor/hooks/useEditorState";
@@ -33,6 +35,22 @@ const defaultTags = ["일상", "서촌나들이", "기록"] as const;
 const workerUrl = process.env.NEXT_PUBLIC_CF_WORKER_URL;
 const giphyApiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 const defaultTextItemFontSize = 16;
+const EditorShareModal = dynamic(() => import("@/features/editor/components/EditorShareModal").then((module) => module.EditorShareModal), {
+  loading: () => null,
+});
+const EditorTutorialOverlay = dynamic(
+  () => import("@/features/editor/components/EditorTutorialOverlay").then((module) => module.EditorTutorialOverlay),
+  {
+    loading: () => null,
+  }
+);
+
+interface SavedEditorSnapshot {
+  title: string;
+  mood: string;
+  tags: string[];
+  bodyHtml: string;
+}
 
 function formatDiaryDate(pageId: string) {
   const date = new Date(pageId);
@@ -50,28 +68,25 @@ function makeStickerDataUrl(emoji: string, bg: string) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-function buildBodyHtml(text: string) {
-  const lines = text
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (lines.length === 0) return "<p></p>";
-  return lines.map((line) => `<p>${line}</p>`).join("");
-}
-
-function extractBodyText(bodyHtml: string | null) {
-  if (!bodyHtml) return "오늘의 기록을 시작해보세요.";
-  const lines = [...bodyHtml.matchAll(/<p>(.*?)<\/p>/g)].map((match) => match[1].trim()).filter(Boolean);
-  return lines.join("\n") || "오늘의 기록을 시작해보세요.";
-}
-
 function buildAiPrompt(input: string) {
   return input.trim();
 }
 
+function areTagsEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function formatSaveTime(timestamp: number | null) {
+  if (!timestamp) return null;
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(timestamp);
+}
+
 export function EditorScreen({ pageId }: EditorScreenProps) {
-  const { state, selectedItem, addItem, updateItem, removeItem, replaceItems, selectItem, resetDirty } = useEditorState({ pageId, viewMode: "single" });
+  const { state, selectedItem, addItem, updateItem, removeItem, hydrateItems, selectItem, resetDirty } = useEditorState({ pageId, viewMode: "single" });
 
   const [activeTool, setActiveTool] = useState<EditorTool>("select");
   const [activePanel, setActivePanel] = useState<EditorSidePanelName>("base");
@@ -81,9 +96,14 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [aiStickerPrompt, setAiStickerPrompt] = useState("");
   const [gifQuery, setGifQuery] = useState("");
   const [entryTitle, setEntryTitle] = useState("");
-  const [bodyText, setBodyText] = useState("오늘의 기록을 시작해보세요.");
-  const [lastSavedBodyText, setLastSavedBodyText] = useState("오늘의 기록을 시작해보세요.");
+  const [bodyDocument, setBodyDocument] = useState(() => createEditorBodyFromText(DEFAULT_EDITOR_BODY_TEXT));
   const [entryTags, setEntryTags] = useState<string[]>([...defaultTags]);
+  const [savedSnapshot, setSavedSnapshot] = useState<SavedEditorSnapshot>(() => ({
+    title: "",
+    mood: moodOptions[0],
+    tags: [...defaultTags],
+    bodyHtml: createEditorBodyFromText(DEFAULT_EDITOR_BODY_TEXT).html,
+  }));
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingSticker, setIsGeneratingSticker] = useState(false);
   const [isSearchingGif, setIsSearchingGif] = useState(false);
@@ -99,15 +119,34 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const sidebarRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
+  const lastAutosaveSignatureRef = useRef<string | null>(null);
   const diaryDate = useMemo(() => formatDiaryDate(pageId), [pageId]);
-  const bodyHtml = useMemo(() => buildBodyHtml(bodyText), [bodyText]);
-  const isBodyDirty = bodyText !== lastSavedBodyText;
+  const bodyHtml = bodyDocument.html;
+  const bodyText = bodyDocument.text;
+  const isBodyDirty = bodyHtml !== savedSnapshot.bodyHtml;
+  const hasMetaChanges = entryTitle !== savedSnapshot.title || moodOptions[activeMood] !== savedSnapshot.mood || !areTagsEqual(entryTags, savedSnapshot.tags) || bodyHtml !== savedSnapshot.bodyHtml;
+  const hasUnsavedChanges = state.isDirty || hasMetaChanges;
+  const currentAutosaveSignature = useMemo(
+    () =>
+      JSON.stringify({
+        title: entryTitle,
+        mood: moodOptions[activeMood],
+        tags: entryTags,
+        bodyHtml,
+        items: state.items,
+      }),
+    [activeMood, bodyHtml, entryTags, entryTitle, state.items]
+  );
   const selectedTextItem = selectedItem?.type === "text" ? selectedItem : null;
   const tutorialStep = tutorialSteps[tutorialStepIndex];
   const {
     isSaving,
     isBodySaving,
+    isAutosaving,
     isCreatingShare,
+    isSaveSlow,
+    saveState,
+    lastSavedAt,
     sharedLetterUrl,
     shareMessage,
     saveMessage,
@@ -116,19 +155,41 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
     setSaveError,
     handleSave,
     handleSaveBody,
+    handleAutosave,
+    handleFlushPendingSave,
     handleCreateShare,
     handleCopyShareLink,
   } = useEditorPersistenceActions({
     pageId,
     title: entryTitle,
     bodyHtml,
-    bodyText,
     mood: moodOptions[activeMood],
     tags: entryTags,
     items: state.items,
     onResetDirty: resetDirty,
-    onBodySaved: setLastSavedBodyText,
+    onPersistSuccess: () => {
+      setSavedSnapshot({
+        title: entryTitle,
+        mood: moodOptions[activeMood],
+        tags: [...entryTags],
+        bodyHtml,
+      });
+      lastAutosaveSignatureRef.current = currentAutosaveSignature;
+    },
   });
+
+  const saveStatusLabel = useMemo(() => {
+    if (isLoading) return "불러오는 중...";
+    if (isSaving || isBodySaving) return "저장 중...";
+    if (isAutosaving) return "자동 저장 중...";
+    if (isSaveSlow) return "네트워크가 느려 저장이 지연되고 있어요.";
+    if (saveState === "error") return "저장에 실패했어요.";
+    if (hasUnsavedChanges) return "저장 안 된 변경사항이 있어요.";
+
+    const formattedTime = formatSaveTime(lastSavedAt);
+    return formattedTime ? `${formattedTime} 저장됨` : "모든 변경사항이 저장됐어요.";
+  }, [hasUnsavedChanges, isAutosaving, isBodySaving, isLoading, isSaveSlow, isSaving, lastSavedAt, saveState]);
+  const isPersistBusy = isSaving || isBodySaving || isAutosaving;
 
   const addEditorItem = (input: CreateEditorItemInput) => {
     addItem({
@@ -198,22 +259,17 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
     }
 
     try {
-      const imageUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === "string") resolve(reader.result);
-          else reject(new Error("이미지를 읽지 못했어요."));
-        };
-        reader.onerror = () => reject(new Error("이미지를 읽는 중 문제가 발생했어요."));
-        reader.readAsDataURL(file);
-      });
+      const normalizedImage = await normalizeEditorImageFile(file);
+      const aspectRatio = normalizedImage.width / Math.max(1, normalizedImage.height);
+      const width = 220;
+      const height = Math.max(120, Math.round(width / Math.max(0.5, Math.min(aspectRatio, 2.5))));
 
       addEditorItem({
         type: "image",
-        width: 220,
-        height: 160,
+        width,
+        height,
         payload: {
-          imageUrl,
+          imageUrl: normalizedImage.dataUrl,
           source: "upload",
           mediaType: "image",
           originalFilename: file.name,
@@ -372,22 +428,35 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
 
         if (session.entry) {
           const entry = session.entry;
-          const nextBodyText = extractBodyText(entry.bodyHtml);
+          const nextBodyDocument = createEditorBodyFromHtml(entry.bodyHtml);
           const moodIndex = moodOptions.findIndex((mood) => mood === entry.mood);
           setActiveMood(moodIndex >= 0 ? moodIndex : 0);
           setEntryTitle(entry.title ?? "");
           setEntryTags(entry.tags.length > 0 ? entry.tags : [...defaultTags]);
-          setBodyText(nextBodyText);
-          setLastSavedBodyText(nextBodyText);
-          replaceItems(session.items);
+          setBodyDocument(nextBodyDocument);
+          setSavedSnapshot({
+            title: entry.title ?? "",
+            mood: moodIndex >= 0 ? moodOptions[moodIndex] : moodOptions[0],
+            tags: entry.tags.length > 0 ? [...entry.tags] : [...defaultTags],
+            bodyHtml: nextBodyDocument.html,
+          });
+          hydrateItems(session.items);
+          lastAutosaveSignatureRef.current = null;
           setSaveMessage(session.items.length > 0 ? `${pageId} 일기와 요소 ${session.items.length}개를 불러왔어요.` : `${pageId} 일기를 불러왔어요.`);
         } else {
           setActiveMood(0);
           setEntryTitle("");
           setEntryTags([...defaultTags]);
-          setBodyText("오늘의 기록을 시작해보세요.");
-          setLastSavedBodyText("오늘의 기록을 시작해보세요.");
-          replaceItems([]);
+          const emptyBodyDocument = createEditorBodyFromText(DEFAULT_EDITOR_BODY_TEXT);
+          setBodyDocument(emptyBodyDocument);
+          setSavedSnapshot({
+            title: "",
+            mood: moodOptions[0],
+            tags: [...defaultTags],
+            bodyHtml: emptyBodyDocument.html,
+          });
+          hydrateItems([]);
+          lastAutosaveSignatureRef.current = null;
         }
       } catch (error) {
         if (!isMounted) return;
@@ -404,7 +473,56 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
     return () => {
       isMounted = false;
     };
-  }, [pageId, replaceItems, setSaveError, setSaveMessage]);
+  }, [hydrateItems, pageId, setSaveError, setSaveMessage]);
+
+  useEffect(() => {
+    if (isLoading || !hasUnsavedChanges || isSaving || isBodySaving || isAutosaving || isCreatingShare) return;
+    if (lastAutosaveSignatureRef.current === currentAutosaveSignature) return;
+
+    const timeout = window.setTimeout(() => {
+      lastAutosaveSignatureRef.current = currentAutosaveSignature;
+      void handleAutosave();
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [currentAutosaveSignature, handleAutosave, hasUnsavedChanges, isAutosaving, isBodySaving, isCreatingShare, isLoading, isSaving]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges && !isSaving && !isAutosaving) return;
+
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, isAutosaving, isSaving]);
+
+  useEffect(() => {
+    const flushPendingChanges = () => {
+      if (!hasUnsavedChanges || isCreatingShare) return;
+      void handleFlushPendingSave();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushPendingChanges();
+      }
+    };
+
+    window.addEventListener("pagehide", flushPendingChanges);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pagehide", flushPendingChanges);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [handleFlushPendingSave, hasUnsavedChanges, isCreatingShare]);
 
   const updateTextItem = (itemId: string, patch: Partial<NonNullable<typeof selectedTextItem>["payload"]["text"]>) => {
     const item = state.items.find((candidate) => candidate.id === itemId);
@@ -529,14 +647,14 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         showSearch={false}
         actions={
           <>
-            <Button size="sm" variant="outline" onClick={() => setIsShareModalOpen(true)}>
-              <Send className="mr-ds-1 h-4 w-4" />
-              편지 공유
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-              <Check className="mr-ds-1 h-4 w-4" />
-              {isSaving ? "저장 중..." : "저장"}
-            </Button>
+	            <Button size="sm" variant="outline" onClick={() => setIsShareModalOpen(true)} disabled={isPersistBusy || isCreatingShare}>
+	              <Send className="mr-ds-1 h-4 w-4" />
+	              편지 공유
+	            </Button>
+	            <Button size="sm" onClick={handleSave} disabled={isPersistBusy}>
+	              <Check className="mr-ds-1 h-4 w-4" />
+	              {isPersistBusy ? "저장 중..." : "저장"}
+	            </Button>
           </>
         }
       />
@@ -547,10 +665,11 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         <EditorToolRail ref={sidebarRef} activePanel={activePanel} onChangePanel={setActivePanel} onChangeTool={setActiveTool} />
 
         <section className="ml-20 mr-80 flex-1 overflow-y-auto bg-vellum px-ds-8 py-0">
-          <div className="mx-auto mb-ds-4 flex max-w-6xl items-center justify-between gap-ds-4">
-            <div>
-              <h1 className="font-display text-ds-brand font-bold text-ink">{diaryDate}</h1>
-            </div>
+	          <div className="mx-auto mb-ds-4 flex max-w-6xl items-center justify-between gap-ds-4">
+	            <div>
+	              <h1 className="font-display text-ds-brand font-bold text-ink">{diaryDate}</h1>
+                <p className={`mt-ds-1 text-ds-caption ${saveState === "error" ? "text-rose-danger" : hasUnsavedChanges ? "text-cedar" : "text-cedar/80"}`}>{saveStatusLabel}</p>
+	            </div>
 
             <div className="flex gap-ds-2 rounded-full bg-oatmeal p-ds-2">
               {moodOptions.map((icon, index) => (
@@ -573,8 +692,16 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
             </NoticeBox>
           ) : null}
           {saveError ? (
-            <NoticeBox tone="error" className="mx-auto mb-ds-4 max-w-6xl">
-              {saveError}
+            <NoticeBox tone="error" className="mx-auto mb-ds-4 flex max-w-6xl items-center justify-between gap-ds-3">
+              <span>{saveError}</span>
+	              <Button size="sm" variant="outline" onClick={() => void handleSave()} disabled={isPersistBusy}>
+	                다시 저장
+	              </Button>
+            </NoticeBox>
+          ) : null}
+          {isSaveSlow ? (
+            <NoticeBox className="mx-auto mb-ds-4 max-w-6xl">
+              네트워크가 느려 저장이 평소보다 오래 걸리고 있어요. 잠시만 기다리거나 직접 다시 저장해보세요.
             </NoticeBox>
           ) : null}
 
@@ -591,7 +718,16 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
               zoom={zoom}
               activeTool={activeTool}
               diaryText={bodyHtml}
-              onDiaryTextChange={(html) => setBodyText(extractBodyText(html))}
+              onDiaryTextChange={(html) => {
+                setBodyDocument((prev) => (prev.html === html ? prev : { ...prev, html }));
+                startTransition(() => {
+                  setBodyDocument((prev) => {
+                    if (prev.html !== html) return prev;
+                    const nextText = extractEditorBodyText(html);
+                    return prev.text === nextText ? prev : { html, text: nextText };
+                  });
+                });
+              }}
               diaryDate={diaryDate}
               onDiaryDateChange={() => undefined}
               dailyExpense=""
@@ -615,6 +751,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           bodyText={bodyText}
           isBodyDirty={isBodyDirty}
           isBodySaving={isBodySaving}
+          isAutosaving={isAutosaving}
           textDraft={textDraft}
           aiStickerPrompt={aiStickerPrompt}
           isGeneratingSticker={isGeneratingSticker}
@@ -626,7 +763,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           selectedTextItem={selectedTextItem}
           zoom={zoom}
           isSaving={isSaving}
-          onBodyTextChange={setBodyText}
+          onBodyTextChange={(value) => setBodyDocument(createEditorBodyFromText(value))}
           onSaveBody={handleSaveBody}
           onTextDraftChange={setTextDraft}
           onAddText={handleAddText}
@@ -662,6 +799,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           theme={shareTheme}
           sharedLetterUrl={sharedLetterUrl}
           isCreatingShare={isCreatingShare}
+          isSaveLocked={isPersistBusy}
           shareMessage={shareMessage}
           saveError={saveError}
           onChangeRecipientName={setShareRecipientName}

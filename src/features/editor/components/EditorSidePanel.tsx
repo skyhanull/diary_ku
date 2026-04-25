@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { forwardRef } from "react";
 import { Check, Minus, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 
@@ -37,6 +38,7 @@ interface EditorSidePanelProps {
   bodyText: string;
   isBodyDirty: boolean;
   isBodySaving: boolean;
+  isAutosaving: boolean;
   textDraft: string;
   aiStickerPrompt: string;
   isGeneratingSticker: boolean;
@@ -90,6 +92,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
       bodyText,
       isBodyDirty,
       isBodySaving,
+      isAutosaving,
       textDraft,
       aiStickerPrompt,
       isGeneratingSticker,
@@ -137,14 +140,14 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
                 <div>
                   <p className="text-ds-body font-semibold text-ink">본문</p>
                 </div>
-                <Button size="sm" onClick={onSaveBody} disabled={isBodySaving || !isBodyDirty}>
-                  {isBodySaving ? "본문 저장 중..." : isBodyDirty ? "본문 저장" : "본문 저장됨"}
+                <Button size="sm" onClick={onSaveBody} disabled={isBodySaving || isAutosaving || !isBodyDirty}>
+                  {isBodySaving ? "본문 저장 중..." : isAutosaving ? "자동 저장 중..." : isBodyDirty ? "본문 저장" : "본문 저장됨"}
                 </Button>
               </div>
               <textarea value={bodyText} onChange={(event) => onBodyTextChange(event.target.value)} className="min-h-32 w-full rounded-2xl border border-line bg-paper p-ds-3 text-ds-body outline-none" placeholder="오늘 있었던 일을 편하게 적어보세요." />
               <div className="mt-ds-2 flex items-center justify-between text-ds-caption text-cedar">
                 <span>{bodyText.trim().length}자</span>
-                <span>{isBodyDirty ? "아직 본문 저장 전" : "본문 저장 완료"}</span>
+                <span>{isAutosaving ? "본문 자동 저장 중" : isBodyDirty ? "아직 본문 저장 전" : "본문 저장 완료"}</span>
               </div>
             </SurfaceCard>
           ) : null}
@@ -178,7 +181,16 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
                         닫기
                       </button>
                     </div>
-                    <img src={stickerPreview.imageUrl} alt={stickerPreview.title ?? "AI sticker preview"} className="mx-auto h-32 w-32 rounded-2xl object-cover" />
+                    <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-2xl">
+                      <Image
+                        src={stickerPreview.imageUrl}
+                        alt={stickerPreview.title ?? "AI sticker preview"}
+                        fill
+                        unoptimized
+                        sizes="128px"
+                        className="object-cover"
+                      />
+                    </div>
                     <Button className="mt-ds-3 w-full" size="sm" onClick={onAddPreviewSticker}>
                       이 스티커 추가
                     </Button>
@@ -223,7 +235,16 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
                   <div className="grid grid-cols-2 gap-ds-2">
                     {gifResults.map((result) => (
                       <button key={result.id} type="button" onClick={() => onAddGifResult(result)} className="overflow-hidden rounded-2xl border border-line bg-paper">
-                        <img src={result.imageUrl} alt={result.title ?? "GIF result"} className="h-28 w-full object-cover" />
+                        <div className="relative h-28 w-full">
+                          <Image
+                            src={result.imageUrl}
+                            alt={result.title ?? "GIF result"}
+                            fill
+                            unoptimized
+                            sizes="(max-width: 768px) 50vw, 160px"
+                            className="object-cover"
+                          />
+                        </div>
                       </button>
                     ))}
                   </div>

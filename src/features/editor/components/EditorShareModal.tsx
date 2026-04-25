@@ -18,6 +18,7 @@ interface EditorShareModalProps {
   theme: SharedLetterTheme;
   sharedLetterUrl: string | null;
   isCreatingShare: boolean;
+  isSaveLocked?: boolean;
   shareMessage: string | null;
   saveError: string | null;
   onChangeRecipientName: (value: string) => void;
@@ -32,6 +33,7 @@ export function EditorShareModal({
   theme,
   sharedLetterUrl,
   isCreatingShare,
+  isSaveLocked = false,
   shareMessage,
   saveError,
   onChangeRecipientName,
@@ -62,9 +64,9 @@ export function EditorShareModal({
               <Input value={recipientName} onChange={(event) => onChangeRecipientName(event.target.value)} placeholder="예: 미래의 나, 윤경에게" className="h-11 rounded-2xl border-line bg-paper" />
             </section>
 
-            <Button className="h-11 w-full" onClick={onCreateShare} disabled={isCreatingShare}>
+            <Button className="h-11 w-full" onClick={onCreateShare} disabled={isCreatingShare || isSaveLocked}>
               <Send className="mr-ds-2 h-4 w-4" />
-              {isCreatingShare ? "링크 생성 중..." : "편지지 링크 만들기"}
+              {isCreatingShare ? "링크 생성 중..." : isSaveLocked ? "저장 처리 중..." : "편지지 링크 만들기"}
             </Button>
           </div>
 

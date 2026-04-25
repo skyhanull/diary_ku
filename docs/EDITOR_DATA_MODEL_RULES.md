@@ -85,18 +85,20 @@ MVP 단계의 저장은 단순성과 안정성을 우선한다.
 - 기준 키는 `user_id + entry_date`다.
 
 ### Item Save
-- `editor_items`는 개별 diff update 대신 전체 덮어쓰기 전략을 사용한다.
+- `editor_items`는 아이템 `id`를 기준으로 diff 저장 전략을 사용한다.
 - 저장 시 순서는 아래와 같다:
   1. `diary_entries` upsert
   2. 대상 `entry_id` 확보
-  3. 해당 `entry_id`의 기존 `editor_items` 삭제
-  4. 현재 캔버스 아이템 전체 insert
+  3. 기존 `editor_items` id 목록 조회
+  4. 현재 캔버스에 없는 id만 delete
+  5. 현재 캔버스 아이템은 `id` 기준 upsert
 
 ## Why This Strategy
-- MVP에서 구현 복잡도를 낮출 수 있다.
-- 저장 로직이 단순해서 오류 가능성이 작다.
+- 아이템 수가 늘어도 저장 비용이 덜 커진다.
+- 같은 아이템의 row identity를 유지할 수 있다.
+- 자동 저장, 충돌 복구, 추후 협업 기능에 더 유리하다.
 - AI 스티커, GIF, 이미지, 텍스트를 동일한 저장 흐름에 태울 수 있다.
-- 추후 최적화 전까지 충분히 유지 가능한 구조다.
+- 여전히 프론트 모델은 단순하게 유지할 수 있다.
 
 ## Load Strategy
 - 에디터 진입 시 먼저 `diary_entries`를 조회한다.

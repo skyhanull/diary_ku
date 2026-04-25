@@ -106,6 +106,15 @@ export function useEditorState(input: CreateEditorStateInput) {
     }));
   }, []);
 
+  const hydrateItems = useCallback((items: EditorItem[]) => {
+    setState((prev) => ({
+      ...prev,
+      items,
+      selectedItemId: null,
+      isDirty: false,
+    }));
+  }, []);
+
   const resetDirty = useCallback(() => {
     setState((prev) => ({ ...prev, isDirty: false }));
   }, []);
@@ -122,6 +131,7 @@ export function useEditorState(input: CreateEditorStateInput) {
     updateItem,
     removeItem,
     replaceItems,
+    hydrateItems,
     resetDirty,
   };
 }

@@ -52,6 +52,7 @@ function mapEditorItemRow(row: EditorItemRow): EditorItem {
 
 function mapEditorItemToInsert(item: EditorItem, entryId: string, userId: string) {
   return {
+    id: item.id,
     entry_id: entryId,
     user_id: userId,
     type: item.type,
@@ -65,6 +66,11 @@ function mapEditorItemToInsert(item: EditorItem, entryId: string, userId: string
     opacity: item.opacity,
     payload: item.payload
   };
+}
+
+function diffRemovedItemIds(existingItemRows: Pick<EditorItemRow, 'id'>[], nextItems: EditorItem[]) {
+  const nextIds = new Set(nextItems.map((item) => item.id));
+  return existingItemRows.map((row) => row.id).filter((id) => !nextIds.has(id));
 }
 
 function mapSharedLetterRow(row: SharedLetterRow): SharedLetterRecord {
@@ -172,13 +178,25 @@ export async function saveEditorSession(input: SaveEditorSessionInput): Promise<
 
   if (entryError) throw entryError;
 
-  const { error: deleteError } = await supabase.from('editor_items').delete().eq('entry_id', entryRow.id);
-  if (deleteError) throw deleteError;
+  const { data: existingItemRows, error: existingItemsError } = await supabase
+    .from('editor_items')
+    .select('id')
+    .eq('entry_id', entryRow.id)
+    .returns<Pick<EditorItemRow, 'id'>[]>();
+
+  if (existingItemsError) throw existingItemsError;
+
+  const removedItemIds = diffRemovedItemIds(existingItemRows ?? [], input.items);
+
+  if (removedItemIds.length > 0) {
+    const { error: deleteError } = await supabase.from('editor_items').delete().in('id', removedItemIds);
+    if (deleteError) throw deleteError;
+  }
 
   if (input.items.length > 0) {
     const itemsPayload = input.items.map((item) => mapEditorItemToInsert(item, entryRow.id, userId));
-    const { error: insertError } = await supabase.from('editor_items').insert(itemsPayload);
-    if (insertError) throw insertError;
+    const { error: upsertError } = await supabase.from('editor_items').upsert(itemsPayload, { onConflict: 'id' });
+    if (upsertError) throw upsertError;
   }
 
   return loadEditorSession(input.pageId);

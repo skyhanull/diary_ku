@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor as TiptapEditor } from '@tiptap/core';
@@ -65,6 +66,13 @@ interface InteractionState {
   handle?: ResizeHandle;
 }
 
+interface DraftItemGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -99,6 +107,79 @@ function SelectionHandles({ onResizeStart }: { onResizeStart: (event: ReactPoint
   );
 }
 
+const CanvasItemVisual = memo(function CanvasItemVisual({
+  item,
+  zoom,
+  onWheel,
+}: {
+  item: EditorItem;
+  zoom: number;
+  onWheel?: (event: React.WheelEvent) => void;
+}) {
+  if (item.type === 'text') {
+    return (
+      <div
+        className="h-full w-full whitespace-pre-wrap break-words rounded bg-white/80 p-ds-2"
+        style={{
+          fontSize: item.payload.text?.fontSize ?? 16,
+          color: item.payload.text?.color ?? '#111827',
+          fontFamily: item.payload.text?.fontFamily ?? 'inherit'
+        }}
+      >
+        {item.payload.text?.content ?? '텍스트'}
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={item.payload.imageUrl ?? 'https://placehold.co/200x200/png?text=Item'}
+      alt={item.payload.alt ?? item.type}
+      fill
+      unoptimized
+      draggable={false}
+      sizes={`${Math.round(item.width * zoom)}px`}
+      className="rounded object-cover"
+      onWheel={onWheel}
+    />
+  );
+});
+
+const StickerItemVisual = memo(function StickerItemVisual({
+  item,
+  onWheel,
+}: {
+  item: EditorItem;
+  onWheel?: (event: React.WheelEvent) => void;
+}) {
+  if (item.type === 'sticker' && item.payload.text?.content) {
+    return (
+      <div
+        className="grid h-full w-full place-items-center rounded-[10px]"
+        style={{ backgroundColor: item.payload.text.color ?? '#ffe4e6' }}
+        onWheel={onWheel}
+      >
+        <span style={{ fontSize: item.payload.text.fontSize ?? 48, lineHeight: 1 }}>
+          {item.payload.text.content}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={item.payload.imageUrl ?? 'https://placehold.co/200x200/png?text=Item'}
+      alt={item.payload.alt ?? item.type}
+      fill
+      unoptimized
+      draggable={false}
+      sizes="110px"
+      className="rounded-[10px] object-cover"
+      onWheel={onWheel}
+    />
+  );
+});
+
 export function EditorCanvasSingle({
   background,
   items,
@@ -130,7 +211,11 @@ export function EditorCanvasSingle({
   const lastEditorHtmlRef = useRef<string>(diaryText || '<p></p>');
   const onMoveItemRef = useRef(onMoveItem);
   const onResizeItemRef = useRef(onResizeItem);
+  const draftGeometryRef = useRef<Record<string, DraftItemGeometry>>({});
+  const pendingCommitRef = useRef<Record<string, DraftItemGeometry>>({});
+  const animationFrameRef = useRef<number | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [draftFrame, setDraftFrame] = useState(0);
   const diaryEditor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -207,6 +292,38 @@ export function EditorCanvasSingle({
       lastEditorHtmlRef.current = incoming;
     }
   }, [diaryEditor, diaryText]);
+
+  const scheduleDraftFrame = useCallback(() => {
+    if (animationFrameRef.current !== null) return;
+
+    animationFrameRef.current = window.requestAnimationFrame(() => {
+      animationFrameRef.current = null;
+      setDraftFrame((value) => value + 1);
+    });
+  }, []);
+
+  const clearDraftGeometry = useCallback(() => {
+    draftGeometryRef.current = {};
+    pendingCommitRef.current = {};
+    if (animationFrameRef.current !== null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    setDraftFrame((value) => value + 1);
+  }, []);
+
+  const getRenderedGeometry = useCallback(
+    (item: EditorItem): DraftItemGeometry => {
+      void draftFrame;
+      return draftGeometryRef.current[item.id] ?? {
+        x: item.x,
+        y: item.y,
+        width: item.width,
+        height: item.height
+      };
+    },
+    [draftFrame]
+  );
 
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -306,7 +423,18 @@ export function EditorCanvasSingle({
 
   useEffect(() => {
     const resetInteraction = () => {
+      const interaction = interactionRef.current;
+      if (interaction) {
+        const draft = pendingCommitRef.current[interaction.itemId];
+        if (draft) {
+          onMoveItemRef.current(interaction.itemId, draft.x, draft.y);
+          if (interaction.mode === 'resize' && onResizeItemRef.current) {
+            onResizeItemRef.current(interaction.itemId, draft.width, draft.height);
+          }
+        }
+      }
       interactionRef.current = null;
+      clearDraftGeometry();
       setDraggingItemId(null);
     };
 
@@ -353,7 +481,15 @@ export function EditorCanvasSingle({
         const offsetY = interaction.offsetY ?? currentRect.height / 2;
         const nextX = clamp((event.clientX - rect.left) / zoom - offsetX, 0, pageWidth - currentRect.width);
         const nextY = clamp((event.clientY - rect.top) / zoom - offsetY, 0, pageHeight - currentRect.height);
-        onMoveItemRef.current(interaction.itemId, nextX, nextY);
+        const nextGeometry = {
+          x: nextX,
+          y: nextY,
+          width: currentRect.width,
+          height: currentRect.height
+        };
+        draftGeometryRef.current[interaction.itemId] = nextGeometry;
+        pendingCommitRef.current[interaction.itemId] = nextGeometry;
+        scheduleDraftFrame();
         return;
       }
 
@@ -384,8 +520,15 @@ export function EditorCanvasSingle({
         nextX = clamp(nextX, 0, pageWidth - nextWidth);
         nextY = clamp(nextY, 0, pageHeight - nextHeight);
 
-        onMoveItemRef.current(interaction.itemId, nextX, nextY);
-        onResizeItemRef.current(interaction.itemId, nextWidth, nextHeight);
+        const nextGeometry = {
+          x: nextX,
+          y: nextY,
+          width: nextWidth,
+          height: nextHeight
+        };
+        draftGeometryRef.current[interaction.itemId] = nextGeometry;
+        pendingCommitRef.current[interaction.itemId] = nextGeometry;
+        scheduleDraftFrame();
       }
     };
 
@@ -408,7 +551,7 @@ export function EditorCanvasSingle({
       window.removeEventListener('blur', resetInteraction);
       window.removeEventListener('pointerdown', handleGlobalPointerDown, true);
     };
-  }, [zoom, draggingItemId]);
+  }, [clearDraftGeometry, draggingItemId, scheduleDraftFrame, zoom]);
 
   useEffect(() => {
     if (!draggingItemId) return;
@@ -421,8 +564,15 @@ export function EditorCanvasSingle({
 
   useEffect(() => {
     interactionRef.current = null;
+    clearDraftGeometry();
     setDraggingItemId(null);
-  }, [items.length]);
+  }, [clearDraftGeometry, items.length]);
+
+  useEffect(() => {
+    return () => {
+      clearDraftGeometry();
+    };
+  }, [clearDraftGeometry]);
 
   const handleStickerWheel = (event: React.WheelEvent, item: EditorItem) => {
     if (!onResizeItem) return;
@@ -445,6 +595,7 @@ export function EditorCanvasSingle({
     () => [...items].filter((item) => item.type !== 'text').sort((a, b) => a.zIndex - b.zIndex),
     [items]
   );
+  const deferredDiaryText = useDeferredValue(diaryText);
 
   const theme = notebookTheme ?? {
     workspaceBg: '#f3f2ee',
@@ -460,7 +611,7 @@ export function EditorCanvasSingle({
   const renderStickerItems = () =>
     stickerItems.map((item) => {
       const isSelected = selectedItemId === item.id;
-      const rect = { x: item.x, y: item.y, width: item.width, height: item.height };
+      const rect = getRenderedGeometry(item);
 
       return (
         <div
@@ -494,25 +645,7 @@ export function EditorCanvasSingle({
               backgroundColor: 'transparent'
             }}
           >
-            {item.type === 'sticker' && item.payload.text?.content ? (
-              <div
-                className="grid h-full w-full place-items-center rounded-[10px]"
-                style={{ backgroundColor: item.payload.text.color ?? '#ffe4e6' }}
-                onWheel={(event) => handleStickerWheel(event, item)}
-              >
-                <span style={{ fontSize: item.payload.text.fontSize ?? 48, lineHeight: 1 }}>
-                  {item.payload.text.content}
-                </span>
-              </div>
-            ) : (
-              <img
-                src={item.payload.imageUrl ?? 'https://placehold.co/200x200/png?text=Item'}
-                alt={item.type}
-                draggable={false}
-                className="h-full w-full rounded-[10px] object-cover"
-                onWheel={(event) => handleStickerWheel(event, item)}
-              />
-            )}
+            <StickerItemVisual item={item} onWheel={(event) => handleStickerWheel(event, item)} />
 
             {isSelected ? <SelectionHandles onResizeStart={(event, handle) => beginResize(event, item, handle)} /> : null}
           </div>
@@ -628,7 +761,7 @@ export function EditorCanvasSingle({
   }
 
   const allItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
-  const previewHtml = getPreviewHtml(diaryText);
+  const previewHtml = getPreviewHtml(deferredDiaryText);
 
   return (
     <section className="rounded-xl border bg-card p-ds-4">
@@ -710,15 +843,16 @@ export function EditorCanvasSingle({
 
             {allItems.map((item) => {
               const isSelected = selectedItemId === item.id;
+              const rect = getRenderedGeometry(item);
               return (
                 <div
                   key={item.id}
                   className={`absolute rounded ${isSelected ? 'ring-1 ring-primary' : ''}`}
                   style={{
-                    left: item.x,
-                    top: item.y,
-                    width: item.width,
-                    height: item.height,
+                    left: rect.x,
+                    top: rect.y,
+                    width: rect.width,
+                    height: rect.height,
                     zIndex: item.zIndex,
                     transform: `rotate(${item.rotation}deg)`
                   }}
@@ -728,25 +862,7 @@ export function EditorCanvasSingle({
                   }}
                   onPointerDown={(event) => beginDrag(event, item)}
                 >
-                  {item.type === 'text' ? (
-                    <div
-                      className="h-full w-full whitespace-pre-wrap break-words rounded bg-white/80 p-ds-2"
-                      style={{
-                        fontSize: item.payload.text?.fontSize ?? 16,
-                        color: item.payload.text?.color ?? '#111827',
-                        fontFamily: item.payload.text?.fontFamily ?? 'inherit'
-                      }}
-                    >
-                      {item.payload.text?.content ?? '텍스트'}
-                    </div>
-                  ) : (
-                    <img
-                      src={item.payload.imageUrl ?? 'https://placehold.co/200x200/png?text=Item'}
-                      alt={item.type}
-                      draggable={false}
-                      className="h-full w-full rounded object-cover"
-                    />
-                  )}
+                  <CanvasItemVisual item={item} zoom={zoom} />
 
                   {isSelected ? (
                     <button
