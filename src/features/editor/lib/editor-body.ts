@@ -16,18 +16,17 @@ function decodeHtmlEntities(value: string) {
   return textarea.value;
 }
 
+// Preserves internal spaces (including Korean word spaces) but filters whitespace-only lines.
 function normalizeEditorText(value: string) {
-  const lines = value
+  return value
     .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return lines.join("\n");
+    .filter((line) => line.trim().length > 0)
+    .join("\n");
 }
 
 export function buildEditorBodyHtml(text: string) {
   const normalizedText = normalizeEditorText(text);
-  if (!normalizedText) return DEFAULT_EDITOR_BODY_HTML;
+  if (!normalizedText) return '<p></p>';
 
   return normalizedText
     .split("\n")
@@ -36,7 +35,7 @@ export function buildEditorBodyHtml(text: string) {
 }
 
 export function extractEditorBodyText(bodyHtml: string | null | undefined) {
-  if (!bodyHtml) return DEFAULT_EDITOR_BODY_TEXT;
+  if (!bodyHtml) return '';
 
   if (typeof DOMParser !== "undefined") {
     const parser = new DOMParser();
@@ -46,9 +45,10 @@ export function extractEditorBodyText(bodyHtml: string | null | undefined) {
       .map((node) => node.textContent?.replace(/\s+/g, " ").trim() ?? "")
       .filter(Boolean);
 
-    return lines.join("\n") || DEFAULT_EDITOR_BODY_TEXT;
+    return lines.join("\n");
   }
 
+  // Fallback: regex-based extraction — trim each line since regex may add leading spaces
   const fallbackText = decodeHtmlEntities(
     bodyHtml
       .replace(/<br\s*\/?>/gi, "\n")
@@ -56,19 +56,23 @@ export function extractEditorBodyText(bodyHtml: string | null | undefined) {
       .replace(/<[^>]+>/g, " ")
   );
 
-  return normalizeEditorText(fallbackText) || DEFAULT_EDITOR_BODY_TEXT;
+  return fallbackText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function createEditorBodyFromHtml(bodyHtml: string | null | undefined): EditorBodyDocument {
   const text = extractEditorBodyText(bodyHtml);
   return {
-    html: bodyHtml && bodyHtml.trim() ? bodyHtml : DEFAULT_EDITOR_BODY_HTML,
+    html: bodyHtml && bodyHtml.trim() ? bodyHtml : '<p></p>',
     text,
   };
 }
 
 export function createEditorBodyFromText(text: string): EditorBodyDocument {
-  const normalizedText = normalizeEditorText(text) || DEFAULT_EDITOR_BODY_TEXT;
+  const normalizedText = normalizeEditorText(text);
 
   return {
     text: normalizedText,

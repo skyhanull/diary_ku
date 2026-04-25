@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Redo2, Send, Undo2 } from "lucide-react";
+import { Check, MessageCircle, Redo2, Send, Undo2 } from "lucide-react";
 
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import { useEditorState } from "@/features/editor/hooks/useEditorState";
 import { useEditorTutorial } from "@/features/editor/hooks/useEditorTutorial";
 import { loadEditorSession } from "@/features/editor/lib/editor-persistence";
 import type { CreateEditorItemInput, EditorSidePanel as EditorSidePanelName, EditorTool, SharedLetterTheme } from "@/features/editor/types/editor.types";
+import { DiaryChat } from "@/features/chat/components/DiaryChat";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 interface EditorScreenProps {
   pageId: string;
@@ -37,7 +39,8 @@ const EditorTutorialOverlay = dynamic(
 );
 
 function formatDiaryDate(pageId: string) {
-  const date = new Date(pageId);
+  const parts = pageId.split("-").map(Number);
+  const date = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date(pageId);
   if (Number.isNaN(date.getTime())) return pageId;
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric" }).format(date);
 }
@@ -61,6 +64,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [zoom, setZoom] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [shareRecipientName, setShareRecipientName] = useState("");
   const [shareTheme, setShareTheme] = useState<SharedLetterTheme>("paper");
 
@@ -250,17 +254,20 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         showSearch={false}
         actions={
           <>
-            <Button size="sm" variant="ghost" onClick={undo} disabled={!canUndo} title="실행 취소 (⌘Z)">
+            <Button size="sm" variant="ghost" aria-label={isChatOpen ? "AI 친구 닫기" : "AI 친구에게 묻기"} aria-pressed={isChatOpen} onClick={() => setIsChatOpen((v) => !v)}>
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" aria-label="실행 취소 (⌘Z)" onClick={undo} disabled={!canUndo}>
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={redo} disabled={!canRedo} title="다시 실행 (⌘⇧Z)">
+            <Button size="sm" variant="ghost" aria-label="다시 실행 (⌘⇧Z)" onClick={redo} disabled={!canRedo}>
               <Redo2 className="h-4 w-4" />
             </Button>
             <Button size="sm" variant="outline" onClick={() => setIsShareModalOpen(true)} disabled={isPersistBusy || isCreatingShare}>
               <Send className="mr-ds-1 h-4 w-4" />
               편지 공유
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={isPersistBusy}>
+            <Button size="sm" aria-label="일기 저장" aria-busy={isPersistBusy} onClick={handleSave} disabled={isPersistBusy}>
               <Check className="mr-ds-1 h-4 w-4" />
               {isPersistBusy ? "저장 중..." : "저장"}
             </Button>
@@ -327,6 +334,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           </SurfaceCard>
 
           <div ref={canvasRef} className="mx-auto max-w-6xl">
+            <ErrorBoundary>
             <EditorCanvasSingle
               background="#fffdf9"
               items={state.items.filter((item) => item.pageSide === "single" || item.pageSide === "left")}
@@ -349,6 +357,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
               onDropAddItem={(input) => addEditorItem({ ...input, pageSide: "single" })}
               onPlaceTextAt={handlePlaceTextAt}
             />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -418,6 +427,10 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           onClose={() => setIsShareModalOpen(false)}
         />
       ) : null}
+
+      <ErrorBoundary fallback={null}>
+        <DiaryChat entryDate={pageId} isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      </ErrorBoundary>
     </div>
   );
 }

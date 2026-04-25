@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.49.1",
     "@tiptap/extension-task-item": "^3.19.0",
     "@tiptap/extension-task-list": "^3.19.0",
@@ -20,6 +22,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "^15.2.4",
+    "openai": "^6.34.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.6.0",

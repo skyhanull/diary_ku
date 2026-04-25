@@ -4,7 +4,12 @@ import { useCallback, useRef, useState } from "react";
 
 import { createEditorSaveFlowController } from "@/features/editor/lib/editor-save-flow";
 import { createSharedLetter, saveEditorSession } from "@/features/editor/lib/editor-persistence";
+import { supabase } from "@/lib/supabase";
 import type { EditorItem, SharedLetterTheme } from "@/features/editor/types/editor.types";
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 interface UseEditorPersistenceActionsInput {
   pageId: string;
@@ -44,6 +49,30 @@ export function useEditorPersistenceActions({
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const triggerEmbed = useCallback(async () => {
+    try {
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const text = [title.trim(), tags.join(' '), stripHtml(bodyHtml)]
+        .filter(Boolean)
+        .join('\n');
+      if (!text.trim()) return;
+
+      const payload = { pageId, text };
+      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
+      const res = await fetch('/api/diary/embed', { method: 'POST', headers, body: JSON.stringify(payload) });
+      if (!res.ok && res.status >= 500) {
+        await fetch('/api/diary/embed', { method: 'POST', headers, body: JSON.stringify(payload) });
+      }
+    } catch {
+      // silently ignore embed errors — embedding is best-effort
+    }
+  }, [bodyHtml, pageId, tags, title]);
 
   const syncPendingFlags = useCallback(() => {
     const counts = saveFlowControllerRef.current.getCounts();
@@ -94,6 +123,7 @@ export function useEditorPersistenceActions({
         }
       }, 1200);
 
+      let succeeded = false;
       try {
         await saveCurrentSession();
         if (saveFlowControllerRef.current.isLatest(requestId)) {
@@ -105,12 +135,12 @@ export function useEditorPersistenceActions({
             setSaveMessage(successMessage);
           }
         }
+        succeeded = true;
       } catch (error) {
         if (saveFlowControllerRef.current.isLatest(requestId)) {
           setSaveState("error");
           setSaveError(error instanceof Error ? error.message : errorMessage);
         }
-        throw error;
       } finally {
         saveFlowControllerRef.current.finish(mode);
         window.clearTimeout(slowTimer);
@@ -119,43 +149,38 @@ export function useEditorPersistenceActions({
         }
         syncPendingFlags();
       }
+      return succeeded;
     },
     [onPersistSuccess, onResetDirty, saveCurrentSession, syncPendingFlags]
   );
 
   const handleSave = useCallback(async () => {
-    try {
-      await persistSession({
-        mode: "manual",
-        successMessage: items.length > 0 ? `${pageId} 일기와 요소 ${items.length}개를 저장했어요.` : `${pageId} 일기를 저장했어요.`,
-        errorMessage: "저장 중 문제가 발생했어요.",
-      });
-    } catch {}
-  }, [items.length, pageId, persistSession]);
+    const ok = await persistSession({
+      mode: "manual",
+      successMessage: items.length > 0 ? `${pageId} 일기와 요소 ${items.length}개를 저장했어요.` : `${pageId} 일기를 저장했어요.`,
+      errorMessage: "저장 중 문제가 발생했어요.",
+    });
+    if (ok) void triggerEmbed();
+  }, [items.length, pageId, persistSession, triggerEmbed]);
 
   const handleSaveBody = useCallback(async () => {
-    try {
-      await persistSession({
-        mode: "body",
-        successMessage: "본문을 포함한 현재 변경사항을 저장했어요.",
-        errorMessage: "본문 저장 중 문제가 발생했어요.",
-      });
-    } catch {}
+    await persistSession({
+      mode: "body",
+      successMessage: "본문을 포함한 현재 변경사항을 저장했어요.",
+      errorMessage: "본문 저장 중 문제가 발생했어요.",
+    });
   }, [persistSession]);
 
   const handleAutosave = useCallback(async () => {
-    try {
-      await persistSession({
-        mode: "autosave",
-        successMessage: null,
-        errorMessage: "자동 저장에 실패했어요. 다시 시도해주세요.",
-        clearSuccessMessage: false,
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }, [persistSession]);
+    const ok = await persistSession({
+      mode: "autosave",
+      successMessage: null,
+      errorMessage: "자동 저장에 실패했어요. 다시 시도해주세요.",
+      clearSuccessMessage: false,
+    });
+    if (ok) void triggerEmbed();
+    return ok;
+  }, [persistSession, triggerEmbed]);
 
   const handleFlushPendingSave = useCallback(async () => {
     if (saveFlowControllerRef.current.hasActivePersist()) {

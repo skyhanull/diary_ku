@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEditorBodyHtml, createEditorBodyFromHtml, createEditorBodyFromText, DEFAULT_EDITOR_BODY_HTML, DEFAULT_EDITOR_BODY_TEXT, extractEditorBodyText } from "./editor-body";
+import { buildEditorBodyHtml, createEditorBodyFromHtml, createEditorBodyFromText, extractEditorBodyText } from "./editor-body";
 
 describe("editor body document", () => {
-  it("builds html from normalized text lines", () => {
-    expect(buildEditorBodyHtml("  첫줄  \n\n둘째 줄 ")).toBe("<p>첫줄</p><p>둘째 줄</p>");
+  it("builds html from text lines (preserves internal spaces)", () => {
+    expect(buildEditorBodyHtml("첫줄\n둘째 줄")).toBe("<p>첫줄</p><p>둘째 줄</p>");
   });
 
-  it("falls back to the default html when text is blank", () => {
-    expect(buildEditorBodyHtml("   \n \n")).toBe(DEFAULT_EDITOR_BODY_HTML);
+  it("returns empty paragraph when text is blank", () => {
+    expect(buildEditorBodyHtml("   \n \n")).toBe("<p></p>");
   });
 
   it("extracts text from html blocks", () => {
@@ -23,10 +23,10 @@ describe("editor body document", () => {
     expect(extractEditorBodyText("<p>Tom &amp; Jerry</p><p>둘째&nbsp;줄<br/>셋째 줄</p>")).toBe("Tom & Jerry\n둘째 줄\n셋째 줄");
   });
 
-  it("creates a consistent document from html", () => {
+  it("returns empty document from null html", () => {
     expect(createEditorBodyFromHtml(null)).toEqual({
-      html: DEFAULT_EDITOR_BODY_HTML,
-      text: DEFAULT_EDITOR_BODY_TEXT,
+      html: "<p></p>",
+      text: "",
     });
   });
 
@@ -44,10 +44,17 @@ describe("editor body document", () => {
     });
   });
 
-  it("normalizes multiline text into a consistent document", () => {
-    expect(createEditorBodyFromText(" 첫 줄 \n\n 둘째 줄 ")).toEqual({
-      html: "<p>첫 줄</p><p>둘째 줄</p>",
-      text: "첫 줄\n둘째 줄",
+  it("preserves spaces within lines (important for Korean IME word spacing)", () => {
+    expect(createEditorBodyFromText("안녕 세계\n둘째 줄")).toEqual({
+      html: "<p>안녕 세계</p><p>둘째 줄</p>",
+      text: "안녕 세계\n둘째 줄",
+    });
+  });
+
+  it("returns empty document from empty text", () => {
+    expect(createEditorBodyFromText("")).toEqual({
+      html: "<p></p>",
+      text: "",
     });
   });
 });
