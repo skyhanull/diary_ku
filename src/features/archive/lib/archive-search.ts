@@ -12,6 +12,7 @@ interface SearchIndex {
   tags: string[];
   date: string;
   mood: string;
+  items: string;
 }
 
 const moodSearchTextByScore = new Map([
@@ -49,7 +50,8 @@ function buildSearchIndex(entry: DiaryEntrySummary): SearchIndex {
     body: normalizeSearchText(entry.bodyText ?? ''),
     tags: (entry.tags ?? []).map(normalizeSearchText).filter(Boolean),
     date: `${entry.date} ${compactDate(entry.date)}`,
-    mood: normalizeSearchText(getMoodSearchText(entry))
+    mood: normalizeSearchText(getMoodSearchText(entry)),
+    items: normalizeSearchText(entry.itemSearchText ?? ''),
   };
 }
 
@@ -108,13 +110,15 @@ export function rankArchiveEntries(entries: DiaryEntrySummary[], query: string):
         const tagScore = scoreTags(index.tags, term);
         const moodScore = scoreField(index.mood, term, { exact: 46, startsWith: 34, includes: 26 });
         const bodyScore = scoreField(index.body, term, { exact: 34, startsWith: 26, includes: 16 });
+        const itemsScore = scoreField(index.items, term, { exact: 30, startsWith: 22, includes: 14 });
         const dateScore = index.date.includes(term) ? 18 : 0;
 
-        termScore += titleScore + tagScore + moodScore + bodyScore + dateScore;
+        termScore += titleScore + tagScore + moodScore + bodyScore + itemsScore + dateScore;
         if (titleScore > 0) addReason(reasons, '제목 일치');
         if (tagScore > 0) addReason(reasons, '태그 일치');
         if (moodScore > 0) addReason(reasons, '감정 일치');
         if (bodyScore > 0) addReason(reasons, '본문 일치');
+        if (itemsScore > 0) addReason(reasons, '스티커/이미지 일치');
         if (dateScore > 0) addReason(reasons, '날짜 일치');
 
         if (termScore > 0) {

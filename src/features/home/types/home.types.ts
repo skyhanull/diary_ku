@@ -15,6 +15,7 @@ export interface DiaryEntrySummary {
   hasText?: boolean;
   hasSticker?: boolean;
   itemCount?: number;
+  itemSearchText?: string;
 }
 
 export interface MoodDistributionItem {

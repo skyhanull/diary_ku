@@ -60,6 +60,10 @@ function mapEntryRowsToSummaries(entryRows: DiaryEntrySummaryRow[], itemRows: Ed
     const hasImageItem = items.some((item) => item.type === 'image' || item.type === 'gif');
     const hasStickerItem = items.some((item) => item.type === 'sticker');
     const coverImageUrl = items.find((item) => item.type === 'image' || item.type === 'gif')?.payload?.imageUrl;
+    const itemSearchText = items
+      .flatMap((item) => [item.payload?.prompt, item.payload?.alt, item.payload?.text?.content])
+      .filter(Boolean)
+      .join(' ') || undefined;
 
     return {
       id: entry.entry_date,
@@ -75,7 +79,8 @@ function mapEntryRowsToSummaries(entryRows: DiaryEntrySummaryRow[], itemRows: Ed
       hasText: Boolean(bodyText) || hasTextItem,
       hasPhoto: hasImageItem,
       hasSticker: hasStickerItem,
-      itemCount: items.length
+      itemCount: items.length,
+      itemSearchText,
     };
   });
 }
