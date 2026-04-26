@@ -1,3 +1,4 @@
+// 에디터 툴바 아이콘 버튼: 활성/비활성 상태 표시가 있는 도구 선택 버튼
 import * as React from 'react';
 
 import { Button, type ButtonProps } from '@/components/ui/button';

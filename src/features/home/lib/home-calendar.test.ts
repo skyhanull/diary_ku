@@ -1,3 +1,4 @@
+// home-calendar의 날짜 배열 생성·날짜 키 변환·레이블 포맷 로직 단위 테스트
 import { describe, expect, it } from 'vitest';
 
 import { buildCalendarDays, countMonthlyEntries, getSelectedEntry, monthLabel, toDateKey, yearLabel } from './home-calendar';

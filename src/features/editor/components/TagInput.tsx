@@ -1,5 +1,5 @@
 "use client";
-
+// 태그 입력 컴포넌트: 엔터/쉼표로 태그를 추가하고 X 버튼으로 삭제한다
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 

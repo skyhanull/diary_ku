@@ -1,3 +1,4 @@
+// 안내/경고 메시지 박스: 정보성 메시지를 강조해서 보여주는 공통 컴포넌트
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';

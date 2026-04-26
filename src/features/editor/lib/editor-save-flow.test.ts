@@ -1,3 +1,4 @@
+// editor-save-flow의 동시 저장 요청 관리·race condition 방지 로직 단위 테스트
 import { describe, expect, it } from "vitest";
 
 import { createEditorSaveFlowController } from "./editor-save-flow";

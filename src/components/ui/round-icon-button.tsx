@@ -1,3 +1,4 @@
+// 원형 아이콘 버튼: variant/size가 고정된 Button 래퍼 (툴바 등에서 사용)
 import * as React from 'react';
 
 import { Button, type ButtonProps } from '@/components/ui/button';

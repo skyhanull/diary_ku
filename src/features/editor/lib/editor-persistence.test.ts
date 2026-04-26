@@ -1,3 +1,4 @@
+// editor-persistence의 Supabase 저장/로드 로직 단위 테스트 (Supabase mock 사용)
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditorItem, EditorItemRow } from '@/features/editor/types/editor.types';

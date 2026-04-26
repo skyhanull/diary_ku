@@ -1,3 +1,4 @@
+// archive-search의 텍스트 정규화와 검색 랭킹 로직 단위 테스트
 import { describe, expect, it } from 'vitest';
 
 import { normalizeSearchText, rankArchiveEntries } from './archive-search';

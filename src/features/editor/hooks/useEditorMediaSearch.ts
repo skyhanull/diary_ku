@@ -1,5 +1,5 @@
 "use client";
-
+// 미디어 검색 훅: GIPHY·스티커 검색 쿼리 상태와 검색 결과를 관리한다
 import { useCallback, useRef, useState } from "react";
 import type { CreateEditorItemInput } from "@/features/editor/types/editor.types";
 

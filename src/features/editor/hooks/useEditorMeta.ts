@@ -1,5 +1,5 @@
 "use client";
-
+// 에디터 메타 훅: 일기 제목·태그·감정(mood) 상태를 관리한다
 import { useCallback, useState } from "react";
 import { startTransition } from "react";
 import {
@@ -11,11 +11,15 @@ import {
 } from "@/features/editor/lib/editor-body";
 import type { DiaryEntryRecord } from "@/features/editor/types/editor.types";
 
+// 선택 가능한 감정 이모지 목록 (인덱스로 activeMoodIndex와 대응)
 export const moodOptions = ["😄", "🙂", "😐", "🙁", "😢"] as const;
+// moodOptions 배열 원소 타입
 export type MoodEmoji = (typeof moodOptions)[number];
 
+// 새 일기 생성 시 기본으로 붙는 태그 목록
 const defaultTags: string[] = ["일상", "기록"];
 
+// 마지막으로 저장된 에디터 메타 상태를 기록해 dirty 여부 비교에 쓰는 타입
 interface SavedEditorSnapshot {
   title: string;
   mood: MoodEmoji;
@@ -23,6 +27,7 @@ interface SavedEditorSnapshot {
   bodyHtml: string;
 }
 
+// 주어진 bodyHtml을 기준으로 기본값 스냅샷 객체를 생성한다
 function makeDefaultSnapshot(bodyHtml: string): SavedEditorSnapshot {
   return {
     title: "",
@@ -32,6 +37,7 @@ function makeDefaultSnapshot(bodyHtml: string): SavedEditorSnapshot {
   };
 }
 
+// 제목·태그·감정·본문 상태와 dirty 감지·스냅샷 관리를 제공하는 훅
 export function useEditorMeta() {
   const defaultBody = createEditorBodyFromText(DEFAULT_EDITOR_BODY_TEXT);
 

@@ -1,6 +1,8 @@
+// 임베딩 API: 일기 본문을 Voyage AI로 벡터화해 Supabase에 저장한다 (RAG 검색용)
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// 텍스트를 Voyage AI에 보내 벡터 임베딩 배열을 받아온다 (실패 시 에러를 던진다)
 async function getEmbedding(text: string): Promise<number[]> {
   const res = await fetch('https://api.voyageai.com/v1/embeddings', {
     method: 'POST',
@@ -15,6 +17,7 @@ async function getEmbedding(text: string): Promise<number[]> {
   return data.data[0].embedding;
 }
 
+// pageId·text를 받아 임베딩을 생성한 뒤 해당 일기 행의 embedding 컬럼을 업데이트한다
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');

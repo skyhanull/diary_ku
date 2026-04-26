@@ -1,5 +1,5 @@
 "use client";
-
+// 에러 바운더리: 하위 컴포넌트에서 예외가 발생하면 잡아서 앱 전체 크래시를 막는다
 import { Component, type ReactNode } from "react";
 
 interface Props {

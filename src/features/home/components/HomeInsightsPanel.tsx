@@ -1,5 +1,5 @@
 'use client';
-
+// 인사이트 패널: 선택된 날짜의 일기·일정·감정 분포·날씨를 보여주는 우측 패널
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CalendarPlus2, Cloud, CloudRain, CloudSun, Sparkles, Sun } from 'lucide-react';

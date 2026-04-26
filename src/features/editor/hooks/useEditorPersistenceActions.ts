@@ -1,5 +1,5 @@
 "use client";
-
+// 에디터 저장 훅: 수동/자동저장, 임베딩 갱신, 공유 링크 생성 등 저장 관련 액션을 담당한다
 import { useCallback, useRef, useState } from "react";
 
 import { createEditorSaveFlowController } from "@/features/editor/lib/editor-save-flow";
@@ -7,10 +7,12 @@ import { createSharedLetter, saveEditorSession } from "@/features/editor/lib/edi
 import { supabase } from "@/lib/supabase";
 import type { EditorItem, SharedLetterTheme } from "@/features/editor/types/editor.types";
 
+// HTML 태그를 제거하고 공백을 정규화해 순수 텍스트를 반환한다
 function stripHtml(html: string) {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+// 훅에 주입할 에디터 현재 상태와 콜백을 정의하는 입력 타입
 interface UseEditorPersistenceActionsInput {
   pageId: string;
   title: string;
@@ -22,11 +24,13 @@ interface UseEditorPersistenceActionsInput {
   onPersistSuccess: () => void;
 }
 
+// 공유 편지 생성 시 필요한 수신인 이름과 테마를 담는 타입
 interface CreateShareInput {
   recipientName: string;
   theme: SharedLetterTheme;
 }
 
+// 저장·자동저장·공유 링크 생성 액션과 관련 UI 상태를 제공하는 훅
 export function useEditorPersistenceActions({
   pageId,
   title,
@@ -50,6 +54,8 @@ export function useEditorPersistenceActions({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // 저장 성공 후 RAG 검색용 임베딩을 갱신한다.
+  // 저장 자체는 막지 않아야 해서 실패해도 조용히 넘기고, 5xx만 1회 재시도한다.
   const triggerEmbed = useCallback(async () => {
     try {
       if (!supabase) return;
@@ -81,6 +87,7 @@ export function useEditorPersistenceActions({
     setIsAutosaving(counts.autosave > 0);
   }, []);
 
+  // 현재 에디터 상태를 Supabase 저장 형식으로 묶어 persistence 레이어로 넘긴다.
   const saveCurrentSession = useCallback(async () => {
     return saveEditorSession({
       pageId,
@@ -106,6 +113,7 @@ export function useEditorPersistenceActions({
       errorMessage: string;
       clearSuccessMessage?: boolean;
     }) => {
+      // manual/body/autosave 요청이 겹칠 수 있어서 "마지막 요청만" UI 상태를 갱신하게 한다.
       const requestId = saveFlowControllerRef.current.start(mode);
       syncPendingFlags();
       setSaveState(mode === "autosave" ? "autosaving" : "saving");
@@ -127,6 +135,7 @@ export function useEditorPersistenceActions({
       try {
         await saveCurrentSession();
         if (saveFlowControllerRef.current.isLatest(requestId)) {
+          // 저장이 실제로 끝난 뒤에만 dirty 스냅샷과 저장 시각을 갱신한다.
           onResetDirty();
           onPersistSuccess();
           setLastSavedAt(Date.now());
@@ -182,6 +191,8 @@ export function useEditorPersistenceActions({
     return ok;
   }, [persistSession, triggerEmbed]);
 
+  // 탭 숨김/이탈 직전에 호출되는 플러시용 저장.
+  // 이미 다른 저장이 돌고 있으면 중복 호출을 피한다.
   const handleFlushPendingSave = useCallback(async () => {
     if (saveFlowControllerRef.current.hasActivePersist()) {
       return false;
@@ -197,6 +208,7 @@ export function useEditorPersistenceActions({
       setShareMessage(null);
 
       try {
+        // 공유는 "현재 편집 중 상태"를 원본과 분리된 스냅샷으로 한 번 더 저장한다.
         const sharedLetter = await createSharedLetter({
           pageId,
           title: title.trim() || null,

@@ -1,5 +1,5 @@
 "use client";
-
+// 튜토리얼 상태 훅: 튜토리얼 단계 진행과 표시 여부를 관리한다
 import { useCallback, useEffect, useState } from "react";
 import { tutorialSteps, type TutorialBubbleLayout } from "@/features/editor/components/editor-tutorial-config";
 

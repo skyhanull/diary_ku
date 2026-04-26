@@ -1,5 +1,5 @@
 "use client";
-
+// 공유 모달: 일기를 편지로 공유하는 링크를 생성하고 복사하는 UI
 import { Copy, ExternalLink, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

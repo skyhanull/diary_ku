@@ -1,7 +1,9 @@
+// AI 채팅 API: 사용자 메시지를 받아 RAG로 관련 일기를 검색한 뒤 OpenAI 응답을 스트리밍한다
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
+// 텍스트를 Voyage AI에 보내 벡터 임베딩을 받아오고, 실패하면 null을 반환한다
 async function getEmbedding(text: string): Promise<number[] | null> {
   try {
     const res = await fetch('https://api.voyageai.com/v1/embeddings', {
@@ -20,11 +22,13 @@ async function getEmbedding(text: string): Promise<number[] | null> {
   }
 }
 
+// 대화 이력 한 턴의 역할과 내용을 담는 타입이다
 interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
+// RAG 벡터 검색 결과 행의 타입으로, 날짜·제목·본문·감정을 포함한다
 interface DiaryMatchRow {
   entry_date: string;
   title: string | null;
@@ -32,6 +36,7 @@ interface DiaryMatchRow {
   mood: string | null;
 }
 
+// 사용자 메시지를 받아 RAG 검색 후 Groq LLM 응답을 스트리밍으로 반환하는 API 핸들러다
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');

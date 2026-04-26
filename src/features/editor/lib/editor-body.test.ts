@@ -1,3 +1,4 @@
+// editor-body의 HTML↔텍스트 변환·정규화 로직 단위 테스트
 import { describe, expect, it } from "vitest";
 
 import { buildEditorBodyHtml, createEditorBodyFromHtml, createEditorBodyFromText, extractEditorBodyText } from "./editor-body";

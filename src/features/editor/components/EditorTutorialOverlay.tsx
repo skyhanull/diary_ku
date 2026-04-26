@@ -1,5 +1,5 @@
 "use client";
-
+// 튜토리얼 오버레이: 처음 사용자에게 에디터 기능을 단계별 말풍선으로 안내한다
 import { tutorialSteps, type TutorialBubbleLayout, type TutorialStep } from "@/features/editor/components/editor-tutorial-config";
 
 interface EditorTutorialOverlayProps {

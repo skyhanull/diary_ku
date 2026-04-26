@@ -1,5 +1,5 @@
 "use client";
-
+// AI 채팅 패널 UI: 오른쪽에서 슬라이드인하는 일기 친구 대화 화면
 import { useEffect, useRef } from "react";
 import { MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";

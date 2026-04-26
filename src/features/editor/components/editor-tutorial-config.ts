@@ -1,3 +1,4 @@
+// 튜토리얼 설정: 각 단계의 제목·설명·말풍선 위치를 정의하는 상수 파일
 export interface TutorialStep {
   id: string;
   title: string;

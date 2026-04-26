@@ -1,3 +1,4 @@
+// 통계 페이지: 아직 개발 중인 기능으로, 준비 중 안내 화면을 보여준다
 import { DeferredFeaturePage } from '@/components/layout/DeferredFeaturePage';
 
 export default function StatsPage() {

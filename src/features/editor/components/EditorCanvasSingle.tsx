@@ -1,5 +1,5 @@
 'use client';
-
+// 단일 페이지 캔버스: 텍스트·스티커·이미지 아이템을 드래그·리사이즈로 자유 배치한다
 import Image from 'next/image';
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent } from 'react';

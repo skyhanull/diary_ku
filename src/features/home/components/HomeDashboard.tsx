@@ -1,30 +1,17 @@
 'use client';
-
+// 홈 대시보드: 캘린더·인사이트 패널을 조합하고 일기·일정 데이터를 불러와 관리한다
 import { useEffect, useMemo, useState } from 'react';
 
 import { MonthlyCalendar } from '@/features/home/components/MonthlyCalendar';
 import { HomeInsightsPanel } from '@/features/home/components/HomeInsightsPanel';
 import { buildCalendarDays, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
+import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/diary-summary';
 import { createSchedule, loadMonthlySchedules, removeSchedule, updateSchedule } from '@/features/home/lib/home-schedules';
-import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/home-persistence';
 import type { DiaryEntrySummary, MoodDistributionItem, ScheduleItem } from '@/features/home/types/home.types';
+import { moodMeta } from '@/lib/mood';
+import { formatSelectedDate } from '@/lib/date';
 
-const moodDistributionMeta = [
-  { score: 100, emoji: '😄', label: '좋음', color: 'var(--mood-happy)' },
-  { score: 80, emoji: '🙂', label: '평온', color: 'var(--mood-calm)' },
-  { score: 60, emoji: '😐', label: '보통', color: 'var(--mood-neutral)' },
-  { score: 40, emoji: '🙁', label: '흐림', color: 'var(--mood-cloudy)' },
-  { score: 20, emoji: '😢', label: '슬픔', color: 'var(--mood-sad)' }
-] as const;
-
-function formatSelectedDate(date: Date) {
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short'
-  }).format(date);
-}
-
+// 해당 월 일기 목록에서 감정별 개수와 비율을 계산해 분포 배열을 반환한다
 function buildMonthlyMoodDistribution(entries: DiaryEntrySummary[]): MoodDistributionItem[] {
   const scoreCounts = new Map<number, number>();
 
@@ -35,7 +22,7 @@ function buildMonthlyMoodDistribution(entries: DiaryEntrySummary[]): MoodDistrib
 
   const total = [...scoreCounts.values()].reduce((sum, count) => sum + count, 0);
 
-  return moodDistributionMeta.map((item) => {
+  return moodMeta.map((item) => {
     const count = scoreCounts.get(item.score) ?? 0;
 
     return {
@@ -46,6 +33,7 @@ function buildMonthlyMoodDistribution(entries: DiaryEntrySummary[]): MoodDistrib
   });
 }
 
+// 홈 페이지의 최상위 컨테이너로 캘린더와 인사이트 패널을 조합하고 데이터 상태를 관리한다
 export function HomeDashboard() {
   const [today] = useState(() => new Date());
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -56,6 +44,7 @@ export function HomeDashboard() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isScheduleSaving, setIsScheduleSaving] = useState(false);
 
+  // offset 방향으로 표시 월을 이동하고 선택 날짜를 해당 월 1일로 초기화한다
   const moveMonth = (offset: number) => {
     const nextMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
     setVisibleMonth(nextMonth);
@@ -111,6 +100,7 @@ export function HomeDashboard() {
     };
   }, [visibleMonth]);
 
+  // 표시 월·선택 날짜·일기·일정이 바뀔 때마다 캘린더 그리드 데이터를 재계산한다
   const calendarDays = useMemo(
     () =>
       buildCalendarDays({
@@ -123,10 +113,14 @@ export function HomeDashboard() {
     [entries, schedules, selectedDate, today, visibleMonth]
   );
 
+  // 선택된 날짜에 해당하는 일기 요약을 메모이제이션해 반환한다
   const selectedEntry = useMemo(() => getSelectedEntry(selectedDate, entries), [entries, selectedDate]);
+  // 선택된 날짜의 일정만 필터링해 메모이제이션한다
   const selectedSchedules = useMemo(() => schedules.filter((schedule) => schedule.date === toDateKey(selectedDate)), [schedules, selectedDate]);
+  // 현재 월 일기 목록에서 감정 분포를 메모이제이션해 계산한다
   const monthlyMoodDistribution = useMemo(() => buildMonthlyMoodDistribution(entries), [entries]);
 
+  // 새 일정을 서버에 저장하고 로컬 상태에 추가한다
   const handleAddSchedule = async (input: { date: string; title: string; note?: string }) => {
     setIsScheduleSaving(true);
     setScheduleError(null);
@@ -143,6 +137,7 @@ export function HomeDashboard() {
     }
   };
 
+  // 기존 일정을 서버에서 수정하고 로컬 상태를 업데이트한다
   const handleUpdateSchedule = async (scheduleId: string, input: { date: string; title: string; note?: string }) => {
     setIsScheduleSaving(true);
     setScheduleError(null);
@@ -161,6 +156,7 @@ export function HomeDashboard() {
     }
   };
 
+  // 지정한 일정을 서버에서 삭제하고 로컬 상태에서 제거한다
   const handleDeleteSchedule = async (scheduleId: string) => {
     setIsScheduleSaving(true);
     setScheduleError(null);

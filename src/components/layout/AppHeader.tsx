@@ -1,17 +1,17 @@
-'use client';
+"use client";
+// 상단 공통 헤더: 네비게이션 링크, 로그인/로그아웃, AI 친구 채팅 버튼을 포함한다
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Search, Sparkles, UserCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { getCurrentSession, signOutCurrentUser } from "@/features/auth/lib/auth-client";
+import { supabase } from "@/lib/supabase";
 
-import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Search, Sparkles, UserCircle2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { getCurrentSession, signOutCurrentUser } from '@/features/auth/lib/auth-client';
-import { supabase } from '@/lib/supabase';
-
-const navItems = ['기록', '보관함'] as const;
+const navItems = ["기록", "보관함"] as const;
 const navLinks = {
-  기록: '/',
-  보관함: '/archive'
+  기록: "/",
+  보관함: "/archive",
 } as const;
 
 interface AppHeaderProps {
@@ -20,7 +20,7 @@ interface AppHeaderProps {
   showSearch?: boolean;
 }
 
-export function AppHeader({ activeItem = '기록', actions, showSearch = true }: AppHeaderProps) {
+export function AppHeader({ activeItem = "기록", actions, showSearch = true }: AppHeaderProps) {
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
 
@@ -50,19 +50,19 @@ export function AppHeader({ activeItem = '기록', actions, showSearch = true }:
 
   const handleProfileClick = async () => {
     if (!isSignedIn) {
-      router.push('/auth');
+      router.push("/auth");
       return;
     }
 
-    const shouldSignOut = window.confirm('로그아웃할까요?');
+    const shouldSignOut = window.confirm("로그아웃할까요?");
     if (!shouldSignOut) return;
 
     try {
       await signOutCurrentUser();
-      window.alert('로그아웃됐어요.');
+      window.alert("로그아웃됐어요.");
       router.refresh();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : '로그아웃 중 문제가 발생했어요.');
+      window.alert(error instanceof Error ? error.message : "로그아웃 중 문제가 발생했어요.");
     }
   };
 
@@ -81,11 +81,9 @@ export function AppHeader({ activeItem = '기록', actions, showSearch = true }:
                 key={item}
                 href={navLinks[item]}
                 className={[
-                  'font-sans text-ds-body font-semibold transition-colors duration-200',
-                  item === activeItem
-                    ? 'border-b-2 border-cedar-dark pb-ds-1 text-cedar-dark'
-                    : 'text-ink-warm hover:text-cedar-dark'
-                ].join(' ')}
+                  "font-sans text-ds-body font-semibold transition-colors duration-200",
+                  item === activeItem ? "border-b-2 border-cedar-dark pb-ds-1 text-cedar-dark" : "text-ink-warm hover:text-cedar-dark",
+                ].join(" ")}
               >
                 {item}
               </Link>
@@ -94,25 +92,13 @@ export function AppHeader({ activeItem = '기록', actions, showSearch = true }:
         </div>
 
         <div className="flex items-center gap-ds-3">
-          {actions}
-          {showSearch ? (
-            <div className="relative hidden items-center rounded-full sm:flex">
-              <Search className="pointer-events-none absolute left-4 h-4 w-4 text-ink-warm" />
-              <Input
-                type="text"
-                placeholder="기록 검색..."
-                className="h-10 w-44 rounded-full border-border/70 bg-secondary pl-10"
-              />
-            </div>
-          ) : null}
-
           <button
             type="button"
             onClick={() => {
               void handleProfileClick();
             }}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-cedar-mist text-ink-warm transition-colors duration-200 hover:bg-peach"
-            aria-label={isSignedIn ? '로그아웃' : '프로필'}
+            aria-label={isSignedIn ? "로그아웃" : "프로필"}
           >
             <UserCircle2 className="h-5 w-5" />
           </button>

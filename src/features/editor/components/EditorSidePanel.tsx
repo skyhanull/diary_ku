@@ -1,5 +1,5 @@
 "use client";
-
+// 에디터 사이드패널: 선택된 아이템의 폰트·색상·크기 등 속성을 편집하는 패널
 import Image from "next/image";
 import { forwardRef } from "react";
 import { Check, Minus, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";

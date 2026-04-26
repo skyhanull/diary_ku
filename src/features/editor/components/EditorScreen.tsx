@@ -1,5 +1,5 @@
 "use client";
-
+// 에디터 메인 화면: 캔버스·툴바·사이드패널·AI 채팅을 조합하는 최상위 컴포넌트
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, MessageCircle, Redo2, Send, Undo2 } from "lucide-react";
@@ -22,6 +22,7 @@ import { loadEditorSession } from "@/features/editor/lib/editor-persistence";
 import type { CreateEditorItemInput, EditorSidePanel as EditorSidePanelName, EditorTool, SharedLetterTheme } from "@/features/editor/types/editor.types";
 import { DiaryChat } from "@/features/chat/components/DiaryChat";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { formatDiaryDate, formatSaveTime } from "@/lib/date";
 
 interface EditorScreenProps {
   pageId: string;
@@ -38,21 +39,9 @@ const EditorTutorialOverlay = dynamic(
   { loading: () => null }
 );
 
-function formatDiaryDate(pageId: string) {
-  const parts = pageId.split("-").map(Number);
-  const date = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date(pageId);
-  if (Number.isNaN(date.getTime())) return pageId;
-  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric" }).format(date);
-}
-
 function makeStickerDataUrl(emoji: string, bg: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220"><rect x="10" y="10" width="200" height="200" rx="36" fill="${bg}"/><text x="110" y="138" font-size="98" text-anchor="middle">${emoji}</text></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
-
-function formatSaveTime(timestamp: number | null) {
-  if (!timestamp) return null;
-  return new Intl.DateTimeFormat("ko-KR", { hour: "numeric", minute: "2-digit" }).format(timestamp);
 }
 
 export function EditorScreen({ pageId }: EditorScreenProps) {
