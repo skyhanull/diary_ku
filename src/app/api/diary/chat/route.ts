@@ -1,7 +1,10 @@
 // AI 채팅 API: 사용자 메시지를 받아 RAG로 관련 일기를 검색한 뒤 OpenAI 응답을 스트리밍한다
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
+import { jsonError } from '@/lib/api-response';
+import { htmlToPlainText } from '@/lib/html';
+import { APP_MESSAGES } from '@/lib/messages';
+import { getAuthenticatedSupabase } from '@/lib/server-auth';
 
 // 텍스트를 Voyage AI에 보내 벡터 임베딩을 받아오고, 실패하면 null을 반환한다
 async function getEmbedding(text: string): Promise<number[] | null> {
@@ -38,25 +41,21 @@ interface DiaryMatchRow {
 
 // 사용자 메시지를 받아 RAG 검색 후 Groq LLM 응답을 스트리밍으로 반환하는 API 핸들러다
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-  if (!token) return new Response('Unauthorized', { status: 401 });
+  let authenticated;
+  try {
+    authenticated = await getAuthenticatedSupabase(req.headers.get('Authorization'));
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : APP_MESSAGES.authRequired, 401);
+  }
+
+  const { supabase, user } = authenticated;
 
   const { message, conversationHistory = [] } = await req.json() as {
     message: string;
     conversationHistory: ConversationMessage[];
   };
 
-  if (!message?.trim()) return new Response('Bad Request', { status: 400 });
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return new Response('Unauthorized', { status: 401 });
+  if (!message?.trim()) return jsonError(APP_MESSAGES.invalidRequest, 400);
 
   // RAG: 실패해도 채팅은 계속
   let context = '';
@@ -72,7 +71,7 @@ export async function POST(req: NextRequest) {
 
       context = ((similarEntries ?? []) as DiaryMatchRow[])
         .map((entry) => {
-          const body = entry.body_html?.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() ?? '';
+          const body = htmlToPlainText(entry.body_html);
           return `[${entry.entry_date}]${entry.title ? ` ${entry.title}` : ''}${entry.mood ? ` (${entry.mood})` : ''}${body ? `\n${body}` : ''}`;
         })
         .join('\n\n');

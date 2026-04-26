@@ -1,6 +1,7 @@
 "use client";
 // AI 채팅 훅: 대화 이력 로드, 스트리밍 수신, 메시지 DB 저장을 관리한다
 import { useCallback, useEffect, useRef, useState } from "react";
+import { authorizedFetch } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 
 // 채팅 메시지 한 건의 형태를 정의한다 (id, 역할, 내용)
@@ -102,27 +103,18 @@ export function useDiaryChat({ entryDate }: { entryDate: string }) {
     let assistantContent = "";
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error("로그인이 필요해요.");
-
       // 인사 메시지는 제외하고 최근 대화 일부만 서버에 보낸다.
       const history = messages
         .filter((m) => m.id !== "initial-greeting")
         .slice(-8)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const res = await fetch("/api/diary/chat", {
+      const res = await authorizedFetch("/api/diary/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ message: text, conversationHistory: history }),
         signal: abortRef.current.signal,
       });
-
-      if (!res.ok || !res.body) throw new Error("응답을 받지 못했어요.");
+      if (!res.body) throw new Error("응답을 받지 못했어요.");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();

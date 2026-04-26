@@ -2,6 +2,7 @@
 // 미디어 검색 훅: GIPHY·스티커 검색 쿼리 상태와 검색 결과를 관리한다
 import { useCallback, useRef, useState } from "react";
 import type { CreateEditorItemInput } from "@/features/editor/types/editor.types";
+import { APP_MESSAGES, getUserFacingErrorMessage } from "@/lib/messages";
 
 const workerUrl = process.env.NEXT_PUBLIC_CF_WORKER_URL;
 const giphyApiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
@@ -38,7 +39,7 @@ export function useEditorMediaSearch({ onAddItem, onError, onMessage }: UseEdito
       if (!file) return;
 
       if (!file.type.startsWith("image/")) {
-        onError("이미지 파일만 업로드할 수 있어요.");
+        onError(APP_MESSAGES.imageFileOnly);
         event.target.value = "";
         return;
       }
@@ -70,7 +71,7 @@ export function useEditorMediaSearch({ onAddItem, onError, onMessage }: UseEdito
         });
         onMessage(`${file.name} 이미지를 추가했어요.`);
       } catch (error) {
-        onError(error instanceof Error ? error.message : "이미지 업로드 중 문제가 발생했어요.");
+        onError(getUserFacingErrorMessage(error, APP_MESSAGES.imageUploadFailed));
       } finally {
         event.target.value = "";
       }
@@ -113,12 +114,12 @@ export function useEditorMediaSearch({ onAddItem, onError, onMessage }: UseEdito
           }))
           .filter((item) => item.imageUrl) ?? [];
 
-      if (!response.ok || results.length === 0) throw new Error("검색 결과를 찾지 못했어요.");
+      if (!response.ok || results.length === 0) throw new Error(APP_MESSAGES.gifSearchEmpty);
 
       setGifResults(results);
       onMessage("움짤 검색 결과를 불러왔어요. 원하는 결과를 선택해보세요.");
     } catch (error) {
-      onError(error instanceof Error ? error.message : "움짤 검색 중 문제가 발생했어요.");
+      onError(getUserFacingErrorMessage(error, APP_MESSAGES.gifSearchFailed));
     } finally {
       setIsSearchingGif(false);
     }
@@ -157,7 +158,7 @@ export function useEditorMediaSearch({ onAddItem, onError, onMessage }: UseEdito
       });
       onMessage("AI 스티커 결과를 만들었어요. 확인 후 추가해보세요.");
     } catch (error) {
-      onError(error instanceof Error ? error.message : "AI 스티커 생성 중 문제가 발생했어요.");
+      onError(getUserFacingErrorMessage(error, APP_MESSAGES.aiStickerFailed));
     } finally {
       setIsGeneratingSticker(false);
     }

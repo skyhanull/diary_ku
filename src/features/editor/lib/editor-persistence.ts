@@ -1,5 +1,7 @@
 // 에디터 DB 레이어: 일기 항목·캔버스 아이템을 Supabase에 저장/로드하고 공유 편지를 생성한다
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { getCurrentUser } from '@/lib/client-auth';
+import { APP_MESSAGES } from '@/lib/messages';
 import type {
   CreateSharedLetterInput,
   DiaryEntryRecord,
@@ -113,13 +115,11 @@ function createShareToken() {
 // Supabase 세션에서 현재 로그인한 사용자 ID를 가져온다
 async function getAuthenticatedUserId() {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
   }
 
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  if (!data.user) return null;
-  return data.user.id;
+  const user = await getCurrentUser();
+  return user?.id ?? null;
 }
 
 // 날짜 기반 pageId로 일기 항목과 캔버스 아이템을 DB에서 불러온다
@@ -163,12 +163,12 @@ export async function loadEditorSession(pageId: string): Promise<EditorSessionDa
 // 일기 항목을 upsert하고 캔버스 아이템을 diff 방식으로 저장한 뒤 최신 상태를 반환한다
 export async function saveEditorSession(input: SaveEditorSessionInput): Promise<EditorSessionData> {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
   }
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error('You must be signed in to save an editor entry.');
+    throw new Error(APP_MESSAGES.diarySaveRequiresAuth);
   }
 
   const entryPayload = {
@@ -220,7 +220,7 @@ export async function saveEditorSession(input: SaveEditorSessionInput): Promise<
 // 현재 일기를 저장한 뒤 공유 시점 스냅샷을 shared_letters 테이블에 생성한다
 export async function createSharedLetter(input: CreateSharedLetterInput): Promise<SharedLetterRecord> {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
   }
 
   const savedSession = await saveEditorSession(input);

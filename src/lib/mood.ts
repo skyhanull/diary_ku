@@ -9,5 +9,7 @@ export const moodMeta = [
   { score: 20, emoji: '😢', label: '슬픔', color: 'var(--mood-sad)' }
 ] as const;
 
+export type MoodScore = (typeof moodMeta)[number]["score"];
+
 // 점수를 키로 감정 메타 항목을 O(1)로 조회할 수 있는 Map이다
 export const moodMetaByScore = new Map(moodMeta.map((item) => [item.score, item] as const));

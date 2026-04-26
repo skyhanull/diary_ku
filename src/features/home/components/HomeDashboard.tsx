@@ -8,6 +8,7 @@ import { buildCalendarDays, getSelectedEntry, monthLabel, toDateKey, yearLabel }
 import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/diary-summary';
 import { createSchedule, loadMonthlySchedules, removeSchedule, updateSchedule } from '@/features/home/lib/home-schedules';
 import type { DiaryEntrySummary, MoodDistributionItem, ScheduleItem } from '@/features/home/types/home.types';
+import { APP_MESSAGES, getUserFacingErrorMessage, isAuthRequiredMessage } from '@/lib/messages';
 import { moodMeta } from '@/lib/mood';
 import { formatSelectedDate } from '@/lib/date';
 
@@ -88,7 +89,7 @@ export function HomeDashboard() {
       } catch (error) {
         if (!cancelled) {
           setSchedules([]);
-          setScheduleError(error instanceof Error ? error.message : '일정을 불러오는 중 문제가 발생했어요.');
+          setScheduleError(getUserFacingErrorMessage(error, APP_MESSAGES.scheduleLoadFailed));
         }
       }
     };
@@ -131,7 +132,11 @@ export function HomeDashboard() {
         [...prev, createdSchedule].sort((left, right) => left.date.localeCompare(right.date, 'ko'))
       );
     } catch (error) {
-      setScheduleError(error instanceof Error ? error.message : '일정을 저장하는 중 문제가 발생했어요.');
+      const message = getUserFacingErrorMessage(error, '일정을 저장하는 중 문제가 발생했어요.');
+      setScheduleError(message);
+      if (isAuthRequiredMessage(message)) {
+        window.alert(APP_MESSAGES.authRequiredAlert);
+      }
     } finally {
       setIsScheduleSaving(false);
     }
@@ -150,7 +155,11 @@ export function HomeDashboard() {
           .sort((left, right) => left.date.localeCompare(right.date, 'ko'))
       );
     } catch (error) {
-      setScheduleError(error instanceof Error ? error.message : '일정을 수정하는 중 문제가 발생했어요.');
+      const message = getUserFacingErrorMessage(error, '일정을 수정하는 중 문제가 발생했어요.');
+      setScheduleError(message);
+      if (isAuthRequiredMessage(message)) {
+        window.alert(APP_MESSAGES.authRequiredAlert);
+      }
     } finally {
       setIsScheduleSaving(false);
     }
@@ -165,7 +174,11 @@ export function HomeDashboard() {
       await removeSchedule(scheduleId);
       setSchedules((prev) => prev.filter((schedule) => schedule.id !== scheduleId));
     } catch (error) {
-      setScheduleError(error instanceof Error ? error.message : '일정을 삭제하는 중 문제가 발생했어요.');
+      const message = getUserFacingErrorMessage(error, '일정을 삭제하는 중 문제가 발생했어요.');
+      setScheduleError(message);
+      if (isAuthRequiredMessage(message)) {
+        window.alert(APP_MESSAGES.authRequiredAlert);
+      }
     } finally {
       setIsScheduleSaving(false);
     }

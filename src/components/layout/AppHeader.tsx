@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Search, Sparkles, UserCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getCurrentSession, signOutCurrentUser } from "@/features/auth/lib/auth-client";
+import { APP_MESSAGES, getUserFacingErrorMessage } from "@/lib/messages";
 import { supabase } from "@/lib/supabase";
 
 const navItems = ["기록", "보관함"] as const;
@@ -23,6 +24,7 @@ interface AppHeaderProps {
 export function AppHeader({ activeItem = "기록", actions, showSearch = true }: AppHeaderProps) {
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!supabase) return;
@@ -62,7 +64,7 @@ export function AppHeader({ activeItem = "기록", actions, showSearch = true }:
       window.alert("로그아웃됐어요.");
       router.refresh();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "로그아웃 중 문제가 발생했어요.");
+      window.alert(getUserFacingErrorMessage(error, APP_MESSAGES.signOutFailed));
     }
   };
 
@@ -92,6 +94,21 @@ export function AppHeader({ activeItem = "기록", actions, showSearch = true }:
         </div>
 
         <div className="flex items-center gap-ds-3">
+          {showSearch ? (
+            <div className="hidden items-center gap-ds-2 rounded-full border border-border/60 bg-paper px-ds-3 py-ds-1.5 md:flex">
+              <Search className="h-4 w-4 text-ink-muted" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="검색 준비 중"
+                className="h-auto w-40 border-0 bg-transparent px-0 py-0 text-ds-body shadow-none focus-visible:ring-0"
+                aria-label="전체 검색"
+              />
+            </div>
+          ) : null}
+
+          {actions}
+
           <button
             type="button"
             onClick={() => {

@@ -1,23 +1,8 @@
 // 인증 클라이언트: 로그인·로그아웃·세션 조회를 Supabase Auth로 처리하는 유틸
-import { supabase } from '@/lib/supabase';
-
-// Supabase 클라이언트가 초기화되지 않았으면 에러를 던지고, 정상이면 반환한다
-function getSupabaseClient() {
-  if (!supabase) {
-    throw new Error('Supabase client is not configured.');
-  }
-
-  return supabase;
-}
+import { getCurrentSession, getSupabaseClient } from '@/lib/client-auth';
 
 // 현재 로그인된 세션을 Supabase에서 가져온다
-export async function getCurrentSession() {
-  const client = getSupabaseClient();
-  const { data, error } = await client.auth.getSession();
-
-  if (error) throw error;
-  return data.session;
-}
+export { getCurrentSession };
 
 // 이메일·비밀번호로 Supabase 로그인을 시도하고 세션 데이터를 반환한다
 export async function signInWithEmail(input: { email: string; password: string }) {

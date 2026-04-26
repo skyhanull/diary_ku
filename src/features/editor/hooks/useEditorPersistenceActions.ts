@@ -4,13 +4,11 @@ import { useCallback, useRef, useState } from "react";
 
 import { createEditorSaveFlowController } from "@/features/editor/lib/editor-save-flow";
 import { createSharedLetter, saveEditorSession } from "@/features/editor/lib/editor-persistence";
+import { ApiError, authorizedFetch } from "@/lib/api-client";
+import { htmlToPlainText } from "@/lib/html";
+import { APP_MESSAGES, getUserFacingErrorMessage, isAuthRequiredMessage } from "@/lib/messages";
 import { supabase } from "@/lib/supabase";
 import type { EditorItem, SharedLetterTheme } from "@/features/editor/types/editor.types";
-
-// HTML 태그를 제거하고 공백을 정규화해 순수 텍스트를 반환한다
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-}
 
 // 훅에 주입할 에디터 현재 상태와 콜백을 정의하는 입력 타입
 interface UseEditorPersistenceActionsInput {
@@ -59,21 +57,20 @@ export function useEditorPersistenceActions({
   const triggerEmbed = useCallback(async () => {
     try {
       if (!supabase) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
 
-      const text = [title.trim(), tags.join(' '), stripHtml(bodyHtml)]
+      const text = [title.trim(), tags.join(' '), htmlToPlainText(bodyHtml)]
         .filter(Boolean)
         .join('\n');
       if (!text.trim()) return;
 
       const payload = { pageId, text };
-      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
-      const res = await fetch('/api/diary/embed', { method: 'POST', headers, body: JSON.stringify(payload) });
-      if (!res.ok && res.status >= 500) {
-        await fetch('/api/diary/embed', { method: 'POST', headers, body: JSON.stringify(payload) });
+      try {
+        await authorizedFetch('/api/diary/embed', { method: 'POST', body: JSON.stringify(payload) });
+      } catch (error) {
+        if (error instanceof ApiError && error.status >= 500) {
+          await authorizedFetch('/api/diary/embed', { method: 'POST', body: JSON.stringify(payload) });
+        }
       }
     } catch {
       // silently ignore embed errors — embedding is best-effort
@@ -148,7 +145,11 @@ export function useEditorPersistenceActions({
       } catch (error) {
         if (saveFlowControllerRef.current.isLatest(requestId)) {
           setSaveState("error");
-          setSaveError(error instanceof Error ? error.message : errorMessage);
+          const message = getUserFacingErrorMessage(error, errorMessage);
+          setSaveError(message);
+          if (mode !== "autosave" && isAuthRequiredMessage(message)) {
+            window.alert(APP_MESSAGES.authRequiredAlert);
+          }
         }
       } finally {
         saveFlowControllerRef.current.finish(mode);
@@ -232,7 +233,11 @@ export function useEditorPersistenceActions({
         setSharedLetterUrl(nextUrl);
         setShareMessage("편지 링크를 만들었어요. 복사하거나 바로 열어볼 수 있어요.");
       } catch (error) {
-        setSaveError(error instanceof Error ? error.message : "공유 링크 생성 중 문제가 발생했어요.");
+        const message = getUserFacingErrorMessage(error, "공유 링크 생성 중 문제가 발생했어요.");
+        setSaveError(message);
+        if (isAuthRequiredMessage(message)) {
+          window.alert(APP_MESSAGES.authRequiredAlert);
+        }
       } finally {
         setIsCreatingShare(false);
       }

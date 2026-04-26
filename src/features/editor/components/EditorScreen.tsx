@@ -23,6 +23,7 @@ import type { CreateEditorItemInput, EditorSidePanel as EditorSidePanelName, Edi
 import { DiaryChat } from "@/features/chat/components/DiaryChat";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { formatDiaryDate, formatSaveTime } from "@/lib/date";
+import { APP_MESSAGES, getUserFacingErrorMessage } from "@/lib/messages";
 
 interface EditorScreenProps {
   pageId: string;
@@ -173,7 +174,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         }
       } catch (error) {
         if (!isMounted) return;
-        setSaveError(error instanceof Error ? error.message : "저장된 일기를 불러오는 중 문제가 발생했어요.");
+        setSaveError(getUserFacingErrorMessage(error, APP_MESSAGES.editorLoadFailed));
       } finally {
         if (isMounted) setIsLoading(false);
       }

@@ -1,4 +1,6 @@
 // 홈 기능 관련 TypeScript 타입 전체 정의 (일기 요약·캘린더·일정·날씨 등)
+import type { MoodScore } from '@/lib/mood';
+
 // 일기 항목의 저장 상태를 나타내는 유니언 타입
 export type EntryStatus = 'empty' | 'draft' | 'saved' | 'published';
 
@@ -13,7 +15,7 @@ export interface DiaryEntrySummary {
   updatedAt?: string;
   coverImageUrl?: string;
   status: EntryStatus;
-  moodScore?: number;
+  moodScore?: MoodScore;
   hasPhoto?: boolean;
   hasText?: boolean;
   hasSticker?: boolean;
@@ -23,7 +25,7 @@ export interface DiaryEntrySummary {
 
 // 월별 감정 분포 차트에서 각 감정의 비율과 메타 정보를 담는 타입
 export interface MoodDistributionItem {
-  score: number;
+  score: MoodScore;
   emoji: string;
   label: string;
   count: number;

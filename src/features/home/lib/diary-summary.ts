@@ -2,6 +2,8 @@
 import type { DiaryEntrySummary } from '@/features/home/types/home.types';
 import { getMoodScore } from '@/features/home/lib/home-mood';
 import type { EditorItemPayload } from '@/features/editor/types/editor.types';
+import { getCurrentUser } from '@/lib/client-auth';
+import { htmlToPlainText } from '@/lib/html';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { formatDateBoundary } from '@/lib/date';
 
@@ -24,24 +26,6 @@ interface EditorItemSummaryRow {
   payload: EditorItemPayload | null;
 }
 
-// HTML 문자열에서 태그와 엔티티를 제거해 순수 텍스트로 변환한다
-function stripHtmlToText(html: string | null | undefined) {
-  if (!html) return '';
-
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 // DB 행 배열을 DiaryEntrySummary 배열로 변환해 홈·보관함에서 쓸 수 있게 만든다
 function mapEntryRowsToSummaries(entryRows: DiaryEntrySummaryRow[], itemRows: EditorItemSummaryRow[] | null | undefined) {
   const itemsByEntryId = new Map<string, EditorItemSummaryRow[]>();
@@ -52,7 +36,7 @@ function mapEntryRowsToSummaries(entryRows: DiaryEntrySummaryRow[], itemRows: Ed
   }
 
   return entryRows.map((entry) => {
-    const bodyText = stripHtmlToText(entry.body_html);
+    const bodyText = htmlToPlainText(entry.body_html);
     const items = itemsByEntryId.get(entry.id) ?? [];
     const hasTextItem = items.some((item) => item.type === 'text');
     const hasImageItem = items.some((item) => item.type === 'image' || item.type === 'gif');
@@ -90,14 +74,13 @@ export async function loadDiaryEntrySummariesByDateRange(startDate: Date, endDat
     return [];
   }
 
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-  if (!authData.user) return [];
+  const user = await getCurrentUser();
+  if (!user) return [];
 
   const { data: entryRows, error: entryError } = await supabase
     .from('diary_entries')
     .select('id, entry_date, title, body_html, mood, tags, status, updated_at')
-    .eq('user_id', authData.user.id)
+    .eq('user_id', user.id)
     .gte('entry_date', formatDateBoundary(startDate))
     .lte('entry_date', formatDateBoundary(endDate))
     .order('entry_date', { ascending: true })
@@ -136,14 +119,13 @@ export async function loadAllDiaryEntrySummaries(limit = 80): Promise<DiaryEntry
     return [];
   }
 
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-  if (!authData.user) return [];
+  const user = await getCurrentUser();
+  if (!user) return [];
 
   const { data: entryRows, error: entryError } = await supabase
     .from('diary_entries')
     .select('id, entry_date, title, body_html, mood, tags, status, updated_at')
-    .eq('user_id', authData.user.id)
+    .eq('user_id', user.id)
     .order('entry_date', { ascending: false })
     .limit(limit)
     .returns<DiaryEntrySummaryRow[]>();

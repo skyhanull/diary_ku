@@ -10,7 +10,8 @@ import { archiveMediaFilters, archiveStatusLabels } from '@/features/archive/lib
 import { rankArchiveEntries, type ArchiveSearchResult } from '@/features/archive/lib/archive-search';
 import { loadAllDiaryEntrySummaries } from '@/features/home/lib/diary-summary';
 import type { DiaryEntrySummary } from '@/features/home/types/home.types';
-import { moodMetaByScore } from '@/lib/mood';
+import { APP_MESSAGES, getUserFacingErrorMessage } from '@/lib/messages';
+import { moodMetaByScore, type MoodScore } from '@/lib/mood';
 import { cn } from '@/lib/utils';
 import { formatDateLabel } from '@/lib/date';
 
@@ -30,10 +31,15 @@ function parseSortMode(value: string | null): SortMode {
   return value === 'relevance' ? 'relevance' : 'recent';
 }
 
+function isMoodScore(value: number): value is MoodScore {
+  return moodMetaByScore.has(value as MoodScore);
+}
+
 // home feature에서 계산해둔 moodScore를 보관함 카드용 이모지/라벨로 바꾼다.
 // 감정 정보가 없는 기록은 null을 반환해서 UI에서 숨긴다.
 function getMoodLabel(entry: DiaryEntrySummary) {
   if (entry.moodScore === undefined) return null;
+  if (!isMoodScore(entry.moodScore)) return null;
   return moodMetaByScore.get(entry.moodScore) ?? null;
 }
 
@@ -183,7 +189,7 @@ export function ArchiveDashboard() {
       } catch (loadError) {
         if (!cancelled) {
           setEntries([]);
-          setError(loadError instanceof Error ? loadError.message : '보관함을 불러오는 중 문제가 생겼어요.');
+          setError(getUserFacingErrorMessage(loadError, APP_MESSAGES.archiveLoadFailed));
         }
       } finally {
         if (!cancelled) {
