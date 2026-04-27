@@ -1,12 +1,14 @@
 'use client';
-
+// 인사이트 패널: 선택된 날짜의 일기·일정·감정 분포·날씨를 보여주는 우측 패널
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, CalendarPlus2, Cloud, CloudRain, CloudSun, Sparkles, Sun } from 'lucide-react';
 
 import { getDailyFortune } from '@/features/home/lib/home-data';
 import { toDateKey } from '@/features/home/lib/home-calendar';
 import { fetchWeatherForCurrentPosition } from '@/features/home/lib/home-weather';
+import { getCurrentUser } from '@/lib/client-auth';
+import { APP_MESSAGES } from '@/lib/messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { DiaryEntrySummary, HomeWeather, MoodDistributionItem, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
@@ -56,6 +58,7 @@ export function HomeInsightsPanel({
   onOpenScheduleComposer,
   onCloseScheduleComposer
 }: HomeInsightsPanelProps) {
+  const router = useRouter();
   const todayFortune = getDailyFortune(toDateKey(new Date()));
   const [weather, setWeather] = useState<HomeWeather | null>(null);
   const [weatherError, setWeatherError] = useState(false);
@@ -173,6 +176,26 @@ export function HomeInsightsPanel({
     setScheduleNote('');
   };
 
+  const handleOpenEditor = async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.alert(APP_MESSAGES.authRequiredAlert);
+      return;
+    }
+
+    router.push(`/editor/${selectedDateKey}`);
+  };
+
+  const handleOpenScheduleComposer = async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.alert(APP_MESSAGES.authRequiredAlert);
+      return;
+    }
+
+    onOpenScheduleComposer();
+  };
+
   return (
     <aside className="col-span-12 space-y-ds-6 lg:col-span-4">
       <section className="rounded-xl border border-border bg-card p-ds-card shadow-[0_12px_32px_rgba(52,50,47,0.04)]">
@@ -194,14 +217,15 @@ export function HomeInsightsPanel({
               : '달력에서 날짜를 고른 뒤 일기를 쓰거나, 먼저 일정만 가볍게 남겨둘 수도 있어요.'}
           </p>
           <div className="mt-ds-4 flex flex-wrap gap-ds-3">
-            <Link
-              href={`/editor/${selectedDateKey}`}
+            <button
+              type="button"
+              onClick={() => void handleOpenEditor()}
               className="inline-flex items-center gap-ds-2 text-ds-body font-bold text-primary transition-transform hover:translate-x-1"
             >
               {hasEntry ? '이 날짜 일기 열기' : '이 날짜에 일기 쓰기'}
               <ArrowRight className="h-4 w-4" />
-            </Link>
-            <button type="button" onClick={onOpenScheduleComposer} className="inline-flex items-center gap-ds-2 text-ds-body font-bold text-cedar transition-transform hover:translate-x-1">
+            </button>
+            <button type="button" onClick={() => void handleOpenScheduleComposer()} className="inline-flex items-center gap-ds-2 text-ds-body font-bold text-cedar transition-transform hover:translate-x-1">
               일정 추가
               <CalendarPlus2 className="h-4 w-4" />
             </button>

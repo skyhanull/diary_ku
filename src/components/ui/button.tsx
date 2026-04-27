@@ -1,3 +1,4 @@
+// 기본 버튼 컴포넌트: variant(default/outline/ghost 등)와 size 옵션을 지원한다
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 

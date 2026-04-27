@@ -1,3 +1,4 @@
+// 기본 카드 컨테이너 컴포넌트: 둥근 테두리와 그림자가 있는 범용 래퍼
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';

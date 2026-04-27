@@ -1,3 +1,4 @@
+// 기본 텍스트 입력 컴포넌트: 디자인 시스템 스타일이 적용된 input 래퍼
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';

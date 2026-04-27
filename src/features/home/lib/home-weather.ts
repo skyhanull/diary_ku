@@ -1,10 +1,13 @@
+// 날씨 유틸: 서울 좌표 기준으로 기상청 API를 호출해 오늘의 날씨를 가져온다
 import type { HomeWeather, WeatherForecastItem, WeatherIconName } from '@/features/home/types/home.types';
 
+// 위치 권한을 거부했을 때 기본값으로 사용할 서울 좌표
 const SEOUL_COORDINATES = {
   latitude: 37.5665,
   longitude: 126.978
 } as const;
 
+// Open-Meteo API 응답 형태를 정의하는 타입
 interface OpenMeteoResponse {
   current: {
     temperature_2m: number;
@@ -18,6 +21,7 @@ interface OpenMeteoResponse {
   };
 }
 
+// Nominatim 역지오코딩 API 응답에서 주소 부분을 정의하는 타입
 interface ReverseGeocodeResponse {
   address?: {
     city?: string;
@@ -31,6 +35,7 @@ interface ReverseGeocodeResponse {
   };
 }
 
+// WMO 날씨 코드를 한국어 레이블과 아이콘 이름으로 변환한다
 function toWeatherMeta(code: number): { label: string; icon: WeatherIconName } {
   if (code === 0) return { label: '맑음', icon: 'sun' };
   if (code <= 3) return { label: '구름 조금', icon: 'cloud-sun' };
@@ -42,16 +47,19 @@ function toWeatherMeta(code: number): { label: string; icon: WeatherIconName } {
   return { label: '맑음', icon: 'sun' };
 }
 
+// 숫자 온도를 반올림해 'N°' 형식의 문자열로 포맷한다
 function formatTemperature(value: number) {
   return `${Math.round(value)}°`;
 }
 
+// 예보 인덱스(0=내일, 1=모레, 2=글피)를 한국어 레이블로 변환한다
 function buildForecastLabel(index: number) {
   if (index === 0) return '내일';
   if (index === 1) return '모레';
   return '글피';
 }
 
+// Open-Meteo 일별 데이터에서 내일~글피 3일치 예보 배열을 만든다
 function buildForecast(daily: OpenMeteoResponse['daily']): WeatherForecastItem[] {
   return daily.time.slice(1, 4).map((_, index) => {
     const code = daily.weather_code[index + 1];
@@ -67,6 +75,7 @@ function buildForecast(daily: OpenMeteoResponse['daily']): WeatherForecastItem[]
   });
 }
 
+// 위도·경도를 Nominatim API로 역지오코딩해 한국어 지역명을 반환한다
 async function reverseGeocode(latitude: number, longitude: number) {
   const search = new URLSearchParams({
     format: 'jsonv2',
@@ -94,6 +103,7 @@ async function reverseGeocode(latitude: number, longitude: number) {
   return primary ?? secondary;
 }
 
+// 주어진 좌표와 지역명으로 Open-Meteo에서 현재 날씨와 예보를 가져온다
 export async function fetchWeather(latitude: number, longitude: number, locationLabel: string): Promise<HomeWeather> {
   const search = new URLSearchParams({
     latitude: String(latitude),
@@ -123,6 +133,7 @@ export async function fetchWeather(latitude: number, longitude: number, location
   };
 }
 
+// 브라우저 위치 권한으로 현재 위치를 얻어 날씨를 조회하고, 실패 시 서울 기준으로 대체한다
 export async function fetchWeatherForCurrentPosition(): Promise<HomeWeather> {
   if (typeof window === 'undefined' || !('geolocation' in navigator)) {
     return fetchWeather(SEOUL_COORDINATES.latitude, SEOUL_COORDINATES.longitude, '서울');

@@ -1,3 +1,4 @@
+// 준비 중 페이지: 아직 출시 전인 기능에 공통으로 보여주는 안내 화면 컴포넌트
 import Link from 'next/link';
 
 import { AppHeader } from '@/components/layout/AppHeader';

@@ -1,0 +1,124 @@
+// AI 채팅 API: 사용자 메시지를 받아 RAG로 관련 일기를 검색한 뒤 OpenAI 응답을 스트리밍한다
+import { NextRequest } from 'next/server';
+import OpenAI from 'openai';
+import { jsonError } from '@/lib/api-response';
+import { htmlToPlainText } from '@/lib/html';
+import { APP_MESSAGES } from '@/lib/messages';
+import { getAuthenticatedSupabase } from '@/lib/server-auth';
+
+// 텍스트를 Voyage AI에 보내 벡터 임베딩을 받아오고, 실패하면 null을 반환한다
+async function getEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const res = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ input: [text], model: 'voyage-3-lite' }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { data: { embedding: number[] }[] };
+    return data.data[0].embedding;
+  } catch {
+    return null;
+  }
+}
+
+// 대화 이력 한 턴의 역할과 내용을 담는 타입이다
+interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// RAG 벡터 검색 결과 행의 타입으로, 날짜·제목·본문·감정을 포함한다
+interface DiaryMatchRow {
+  entry_date: string;
+  title: string | null;
+  body_html: string | null;
+  mood: string | null;
+}
+
+// 사용자 메시지를 받아 RAG 검색 후 Groq LLM 응답을 스트리밍으로 반환하는 API 핸들러다
+export async function POST(req: NextRequest) {
+  let authenticated;
+  try {
+    authenticated = await getAuthenticatedSupabase(req.headers.get('Authorization'));
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : APP_MESSAGES.authRequired, 401);
+  }
+
+  const { supabase, user } = authenticated;
+
+  const { message, conversationHistory = [] } = await req.json() as {
+    message: string;
+    conversationHistory: ConversationMessage[];
+  };
+
+  if (!message?.trim()) return jsonError(APP_MESSAGES.invalidRequest, 400);
+
+  // RAG: 실패해도 채팅은 계속
+  let context = '';
+  try {
+    const queryEmbedding = await getEmbedding(message);
+    if (queryEmbedding) {
+      const { data: similarEntries } = await supabase.rpc('match_diary_entries', {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.4,
+        match_count: 5,
+        p_user_id: user.id,
+      });
+
+      context = ((similarEntries ?? []) as DiaryMatchRow[])
+        .map((entry) => {
+          const body = htmlToPlainText(entry.body_html);
+          return `[${entry.entry_date}]${entry.title ? ` ${entry.title}` : ''}${entry.mood ? ` (${entry.mood})` : ''}${body ? `\n${body}` : ''}`;
+        })
+        .join('\n\n');
+    }
+  } catch {
+    // RAG 실패 시 컨텍스트 없이 진행
+  }
+
+  const systemPrompt = `당신은 사용자의 일기를 읽고 기억하는 따뜻한 친구예요. 짧고 자연스럽게 대화하고, 공감해주세요. 형식 없이 친구처럼 말하세요. 답변은 2-3문장 이내로 간결하게.
+반드시 한국어로만 답변하세요. 다른 언어(영어, 일본어, 중국어, 베트남어 등)는 절대 사용하지 마세요.
+
+${context ? `참고할 과거 일기:\n${context}` : ''}`;
+
+  const groq = new OpenAI({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: 'https://api.groq.com/openai/v1',
+  });
+
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        const stream = await groq.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 400,
+          stream: true,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...(conversationHistory.slice(-8) as ConversationMessage[]),
+            { role: 'user', content: message },
+          ],
+        });
+
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content ?? '';
+          if (text) controller.enqueue(encoder.encode(text));
+        }
+      } catch (err) {
+        console.error('[diary/chat] error:', err);
+        controller.enqueue(encoder.encode('오류가 발생했어요. 다시 시도해주세요.'));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
+}

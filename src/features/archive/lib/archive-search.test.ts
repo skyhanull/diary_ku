@@ -1,3 +1,4 @@
+// archive-search의 텍스트 정규화와 검색 랭킹 로직 단위 테스트
 import { describe, expect, it } from 'vitest';
 
 import { normalizeSearchText, rankArchiveEntries } from './archive-search';
@@ -73,5 +74,55 @@ describe('archive search ranking', () => {
     );
 
     expect(results.map((result) => result.entry.date)).toEqual(['2026-04-12', '2026-04-01']);
+  });
+
+  it('matches mood aliases when the query describes an emotion', () => {
+    const results = rankArchiveEntries(
+      [
+        makeEntry({ date: '2026-04-09', title: '조용한 하루', moodScore: 80 }),
+        makeEntry({ date: '2026-04-10', title: '별일 없는 하루', moodScore: 60 }),
+      ],
+      '차분'
+    );
+
+    expect(results[0]?.entry.moodScore).toBe(80);
+    expect(results[0]?.reasons).toContain('감정 일치');
+  });
+
+  it('matches compact date queries without hyphens', () => {
+    const results = rankArchiveEntries(
+      [
+        makeEntry({ date: '2026-04-09', title: '벚꽃 기록' }),
+        makeEntry({ date: '2026-04-10', title: '비 오는 날' }),
+      ],
+      '20260410'
+    );
+
+    expect(results[0]?.entry.date).toBe('2026-04-10');
+    expect(results[0]?.reasons).toContain('날짜 일치');
+  });
+
+  it('filters out entries that do not match any query term', () => {
+    const results = rankArchiveEntries(
+      [
+        makeEntry({ date: '2026-04-09', title: '산책' }),
+        makeEntry({ date: '2026-04-10', title: '영화' }),
+      ],
+      '카페'
+    );
+
+    expect(results).toEqual([]);
+  });
+
+  it('uses recency as a tiebreaker when scores are equal', () => {
+    const results = rankArchiveEntries(
+      [
+        makeEntry({ date: '2026-04-01', title: '커피' }),
+        makeEntry({ date: '2026-04-10', title: '커피' }),
+      ],
+      '커피'
+    );
+
+    expect(results.map((result) => result.entry.date)).toEqual(['2026-04-10', '2026-04-01']);
   });
 });

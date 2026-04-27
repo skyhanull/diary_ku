@@ -1,3 +1,4 @@
+// 배경색이 있는 카드 컨테이너: 패널/섹션 구분에 사용하는 범용 래퍼
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';

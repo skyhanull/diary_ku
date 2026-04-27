@@ -1,5 +1,5 @@
 "use client";
-
+// 에디터 좌측 툴바: 선택·텍스트·스티커·이미지 도구를 선택하는 아이콘 버튼 모음
 import { forwardRef } from "react";
 import { ChevronLeft, ImagePlus, MousePointer2, Sticker, Type } from "lucide-react";
 

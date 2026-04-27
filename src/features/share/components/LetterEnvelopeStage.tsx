@@ -1,5 +1,6 @@
 'use client';
-
+// 편지 봉투 애니메이션: 공유 일기를 봉투가 열리는 애니메이션으로 보여주는 컴포넌트
+import Image from 'next/image';
 import type { EditorItem, SharedLetterRecord } from '@/features/editor/types/editor.types';
 
 interface LetterEnvelopeStageProps {
@@ -38,13 +39,20 @@ function renderSharedItem(item: EditorItem) {
   if (!item.payload.imageUrl) return null;
 
   return (
-    <img
+    <div
       key={item.id}
-      src={item.payload.imageUrl}
-      alt={item.payload.alt ?? item.payload.prompt ?? item.type}
-      className="absolute rounded-[20px] object-cover shadow-[0_12px_28px_rgba(52,50,47,0.14)]"
+      className="absolute overflow-hidden rounded-[20px] shadow-[0_12px_28px_rgba(52,50,47,0.14)]"
       style={style}
-    />
+    >
+      <Image
+        src={item.payload.imageUrl}
+        alt={item.payload.alt ?? item.payload.prompt ?? item.type}
+        fill
+        unoptimized
+        sizes={`${item.width}px`}
+        className="object-cover"
+      />
+    </div>
   );
 }
 

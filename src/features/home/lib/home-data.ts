@@ -1,3 +1,5 @@
+// 홈 화면 오늘의 한마디: 매일 무작위로 보여주는 응원 메시지 목록
+// 매일 하나씩 무작위로 보여줄 응원 메시지 목록
 const fortuneMessages = [
   '작은 기쁨을 놓치지 않을수록 오늘이 더 부드럽게 흘러가요.',
   '천천히 적어 내려간 한 줄이 마음을 예상보다 깊게 정리해줄 거예요.',
@@ -9,10 +11,12 @@ const fortuneMessages = [
   '사소해 보여도 마음이 머문 장면은 오늘 꼭 기록할 가치가 있어요.'
 ] as const;
 
+// 날짜 문자열을 정수 해시로 변환해 날마다 고정된 난수 시드를 만든다
 function hashDate(dateKey: string) {
   return Array.from(dateKey).reduce((acc, char) => acc + char.charCodeAt(0), 0);
 }
 
+// 날짜 키를 시드로 오늘의 운세 점수와 메시지를 결정론적으로 반환한다
 export function getDailyFortune(dateKey: string) {
   const seed = hashDate(dateKey);
   const score = (seed % 51) + 50;

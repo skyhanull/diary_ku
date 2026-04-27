@@ -1,5 +1,5 @@
 'use client';
-
+// 월간 캘린더: 날짜 선택·월 이동·일기 유무·일정 표시를 담당하는 캘린더 컴포넌트
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

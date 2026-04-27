@@ -1,5 +1,5 @@
 'use client';
-
+// 공유 편지 화면: shareToken으로 공유된 일기를 읽기 전용 편지 형태로 렌더링한다
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, Mail } from 'lucide-react';
 
@@ -10,10 +10,12 @@ import { loadSharedLetter } from '@/features/editor/lib/editor-persistence';
 import type { SharedLetterRecord } from '@/features/editor/types/editor.types';
 import { LetterEnvelopeStage } from './LetterEnvelopeStage';
 
+// SharedLetterScreen 컴포넌트에 전달되는 공유 토큰 prop 타입이다
 interface SharedLetterScreenProps {
   shareToken: string;
 }
 
+// 편지 테마별 배경·봉투·종이 Tailwind 클래스와 강조색을 모아둔 상수다
 const paperThemeClasses = {
   paper: {
     shell: 'from-[#f8efe6] via-[#fffaf5] to-[#efe2d6]',
@@ -38,6 +40,7 @@ const paperThemeClasses = {
   }
 } as const;
 
+// HTML 본문에서 p 태그 내용만 추출해 줄바꿈으로 이어붙인 순수 텍스트를 반환한다
 function extractBodyText(bodyHtml: string | null) {
   if (!bodyHtml) return '';
   return [...bodyHtml.matchAll(/<p>(.*?)<\/p>/g)]
@@ -46,6 +49,7 @@ function extractBodyText(bodyHtml: string | null) {
     .join('\n');
 }
 
+// shareToken으로 공유 편지를 불러와 봉투 애니메이션과 함께 읽기 전용으로 보여주는 컴포넌트다
 export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
   const [letter, setLetter] = useState<SharedLetterRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);

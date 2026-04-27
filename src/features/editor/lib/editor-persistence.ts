@@ -1,4 +1,7 @@
+// 에디터 DB 레이어: 일기 항목·캔버스 아이템을 Supabase에 저장/로드하고 공유 편지를 생성한다
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { getCurrentUser } from '@/lib/client-auth';
+import { APP_MESSAGES } from '@/lib/messages';
 import type {
   CreateSharedLetterInput,
   DiaryEntryRecord,
@@ -13,11 +16,14 @@ import type {
   SharedLetterSnapshot
 } from '@/features/editor/types/editor.types';
 
+// 숫자로 변환할 수 없는 값은 fallback으로 대체한다
 function toNumber(value: number | string | null | undefined, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+// DB row를 프론트에서 쓰는 에디터 모델로 바꾸는 변환기들이다.
+// 화면에서는 snake_case 대신 camelCase 타입을 쓰기 때문에 저장/로드 경계에서 정리한다.
 function mapDiaryEntryRow(row: DiaryEntryRow): DiaryEntryRecord {
   return {
     id: row.id,
@@ -34,6 +40,7 @@ function mapDiaryEntryRow(row: DiaryEntryRow): DiaryEntryRecord {
   };
 }
 
+// DB row(snake_case)를 프론트 EditorItem(camelCase)으로 변환한다
 function mapEditorItemRow(row: EditorItemRow): EditorItem {
   return {
     id: row.id,
@@ -50,8 +57,10 @@ function mapEditorItemRow(row: EditorItemRow): EditorItem {
   };
 }
 
+// EditorItem(camelCase)을 DB insert용 snake_case 객체로 변환한다
 function mapEditorItemToInsert(item: EditorItem, entryId: string, userId: string) {
   return {
+    id: item.id,
     entry_id: entryId,
     user_id: userId,
     type: item.type,
@@ -67,6 +76,13 @@ function mapEditorItemToInsert(item: EditorItem, entryId: string, userId: string
   };
 }
 
+// 기존 DB 아이템 중 다음 저장 목록에 없어진 아이템의 id 배열을 반환한다
+function diffRemovedItemIds(existingItemRows: Pick<EditorItemRow, 'id'>[], nextItems: EditorItem[]) {
+  const nextIds = new Set(nextItems.map((item) => item.id));
+  return existingItemRows.map((row) => row.id).filter((id) => !nextIds.has(id));
+}
+
+// DB row를 프론트 SharedLetterRecord(camelCase)로 변환한다
 function mapSharedLetterRow(row: SharedLetterRow): SharedLetterRecord {
   return {
     id: row.id,
@@ -91,21 +107,22 @@ function mapSharedLetterRow(row: SharedLetterRow): SharedLetterRecord {
   };
 }
 
+// 공유 링크에 쓸 20자리 랜덤 토큰을 생성한다
 function createShareToken() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 }
 
+// Supabase 세션에서 현재 로그인한 사용자 ID를 가져온다
 async function getAuthenticatedUserId() {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
   }
 
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  if (!data.user) return null;
-  return data.user.id;
+  const user = await getCurrentUser();
+  return user?.id ?? null;
 }
 
+// 날짜 기반 pageId로 일기 항목과 캔버스 아이템을 DB에서 불러온다
 export async function loadEditorSession(pageId: string): Promise<EditorSessionData> {
   if (!isSupabaseConfigured || !supabase) {
     return { entry: null, items: [] };
@@ -143,14 +160,15 @@ export async function loadEditorSession(pageId: string): Promise<EditorSessionDa
   };
 }
 
+// 일기 항목을 upsert하고 캔버스 아이템을 diff 방식으로 저장한 뒤 최신 상태를 반환한다
 export async function saveEditorSession(input: SaveEditorSessionInput): Promise<EditorSessionData> {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
   }
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error('You must be signed in to save an editor entry.');
+    throw new Error(APP_MESSAGES.diarySaveRequiresAuth);
   }
 
   const entryPayload = {
@@ -172,21 +190,37 @@ export async function saveEditorSession(input: SaveEditorSessionInput): Promise<
 
   if (entryError) throw entryError;
 
-  const { error: deleteError } = await supabase.from('editor_items').delete().eq('entry_id', entryRow.id);
-  if (deleteError) throw deleteError;
+  // 예전에는 editor_items를 전부 지우고 다시 넣었지만,
+  // 지금은 삭제된 id만 지우고 나머지는 upsert해서 저장 비용과 충돌 위험을 줄였다.
+  const { data: existingItemRows, error: existingItemsError } = await supabase
+    .from('editor_items')
+    .select('id')
+    .eq('entry_id', entryRow.id)
+    .returns<Pick<EditorItemRow, 'id'>[]>();
+
+  if (existingItemsError) throw existingItemsError;
+
+  const removedItemIds = diffRemovedItemIds(existingItemRows ?? [], input.items);
+
+  if (removedItemIds.length > 0) {
+    const { error: deleteError } = await supabase.from('editor_items').delete().in('id', removedItemIds);
+    if (deleteError) throw deleteError;
+  }
 
   if (input.items.length > 0) {
     const itemsPayload = input.items.map((item) => mapEditorItemToInsert(item, entryRow.id, userId));
-    const { error: insertError } = await supabase.from('editor_items').insert(itemsPayload);
-    if (insertError) throw insertError;
+    const { error: upsertError } = await supabase.from('editor_items').upsert(itemsPayload, { onConflict: 'id' });
+    if (upsertError) throw upsertError;
   }
 
+  // 저장 직후 DB 기준 최신 상태를 다시 읽어 화면 상태와 맞춘다.
   return loadEditorSession(input.pageId);
 }
 
+// 현재 일기를 저장한 뒤 공유 시점 스냅샷을 shared_letters 테이블에 생성한다
 export async function createSharedLetter(input: CreateSharedLetterInput): Promise<SharedLetterRecord> {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
   }
 
   const savedSession = await saveEditorSession(input);
@@ -196,6 +230,8 @@ export async function createSharedLetter(input: CreateSharedLetterInput): Promis
     throw new Error('공유할 일기를 먼저 저장해주세요.');
   }
 
+  // 공유 링크는 원본 일기를 직접 읽지 않는다.
+  // 공유 시점의 제목/본문/아이템을 snapshot_json으로 따로 보관해서 이후 수정과 분리한다.
   const snapshot: SharedLetterSnapshot = {
     entryDate: entry.entryDate,
     title: input.title ?? entry.title ?? null,
@@ -228,6 +264,7 @@ export async function createSharedLetter(input: CreateSharedLetterInput): Promis
   return mapSharedLetterRow(data);
 }
 
+// shareToken으로 공개 공유 편지를 DB에서 조회해 반환한다
 export async function loadSharedLetter(shareToken: string): Promise<SharedLetterRecord | null> {
   if (!isSupabaseConfigured || !supabase) {
     return null;
