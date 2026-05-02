@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { MonthlyCalendar } from '@/features/home/components/MonthlyCalendar';
+import { DemoAccountPrompt } from '@/features/home/components/DemoAccountPrompt';
 import { HomeInsightsPanel } from '@/features/home/components/HomeInsightsPanel';
 import { buildCalendarDays, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
 import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/diary-summary';
@@ -185,36 +186,39 @@ export function HomeDashboard() {
   };
 
   return (
-    <main className="mx-auto grid max-w-[1440px] grid-cols-12 gap-ds-8 px-ds-page pb-ds-12 pt-ds-8 lg:px-ds-page-lg">
-      <MonthlyCalendar
-        monthLabel={monthLabel(visibleMonth)}
-        yearLabel={yearLabel(visibleMonth)}
-        days={calendarDays}
-        onSelectDate={setSelectedDate}
-        onPrevMonth={() => moveMonth(-1)}
-        onNextMonth={() => moveMonth(1)}
-        onToday={() => {
-          setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
-          setSelectedDate(today);
-          setIsScheduleComposerOpen(false);
-        }}
-      />
+    <>
+      <DemoAccountPrompt />
+      <main className="mx-auto grid max-w-[1440px] grid-cols-12 gap-ds-8 px-ds-page pb-ds-12 pt-ds-8 lg:px-ds-page-lg">
+        <MonthlyCalendar
+          monthLabel={monthLabel(visibleMonth)}
+          yearLabel={yearLabel(visibleMonth)}
+          days={calendarDays}
+          onSelectDate={setSelectedDate}
+          onPrevMonth={() => moveMonth(-1)}
+          onNextMonth={() => moveMonth(1)}
+          onToday={() => {
+            setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+            setSelectedDate(today);
+            setIsScheduleComposerOpen(false);
+          }}
+        />
 
-      <HomeInsightsPanel
-        selectedDate={selectedDate}
-        selectedDateLabel={formatSelectedDate(selectedDate)}
-        selectedEntry={selectedEntry}
-        monthlyMoodDistribution={monthlyMoodDistribution}
-        selectedSchedules={selectedSchedules}
-        onAddSchedule={handleAddSchedule}
-        onUpdateSchedule={handleUpdateSchedule}
-        onDeleteSchedule={handleDeleteSchedule}
-        scheduleError={scheduleError}
-        isScheduleSaving={isScheduleSaving}
-        isScheduleComposerOpen={isScheduleComposerOpen}
-        onOpenScheduleComposer={() => setIsScheduleComposerOpen(true)}
-        onCloseScheduleComposer={() => setIsScheduleComposerOpen(false)}
-      />
-    </main>
+        <HomeInsightsPanel
+          selectedDate={selectedDate}
+          selectedDateLabel={formatSelectedDate(selectedDate)}
+          selectedEntry={selectedEntry}
+          monthlyMoodDistribution={monthlyMoodDistribution}
+          selectedSchedules={selectedSchedules}
+          onAddSchedule={handleAddSchedule}
+          onUpdateSchedule={handleUpdateSchedule}
+          onDeleteSchedule={handleDeleteSchedule}
+          scheduleError={scheduleError}
+          isScheduleSaving={isScheduleSaving}
+          isScheduleComposerOpen={isScheduleComposerOpen}
+          onOpenScheduleComposer={() => setIsScheduleComposerOpen(true)}
+          onCloseScheduleComposer={() => setIsScheduleComposerOpen(false)}
+        />
+      </main>
+    </>
   );
 }

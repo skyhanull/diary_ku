@@ -5,13 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCurrentSession, signInWithEmail, signUpWithEmail } from "@/features/auth/lib/auth-client";
+import { DEFAULT_TEST_ACCOUNT_EMAIL, DEFAULT_TEST_ACCOUNT_PASSWORD, getCurrentSession, signInWithEmail, signUpWithEmail } from "@/features/auth/lib/auth-client";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 type AuthMode = "signin" | "signup";
-
-const defaultTestAccountEmail = process.env.NEXT_PUBLIC_TEST_ACCOUNT_EMAIL ?? "test1234@naver.com";
-const defaultTestAccountPassword = process.env.NEXT_PUBLIC_TEST_ACCOUNT_PASSWORD ?? "test1234";
 
 export default function AuthPage() {
   return (
@@ -36,8 +33,8 @@ function AuthPageContent() {
   const redirectPath = next.startsWith("/") ? next : "/";
 
   const [mode, setMode] = useState<AuthMode>("signin");
-  const [email, setEmail] = useState(defaultTestAccountEmail);
-  const [password, setPassword] = useState(defaultTestAccountPassword);
+  const [email, setEmail] = useState(DEFAULT_TEST_ACCOUNT_EMAIL);
+  const [password, setPassword] = useState(DEFAULT_TEST_ACCOUNT_PASSWORD);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
