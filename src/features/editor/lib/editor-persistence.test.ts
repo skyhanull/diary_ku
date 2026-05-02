@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditorItem, EditorItemRow } from '@/features/editor/types/editor.types';
+import { APP_MESSAGES } from '@/lib/messages';
 
 const mockSupabaseState = vi.hoisted(() => ({
   isSupabaseConfigured: true,
@@ -330,7 +331,7 @@ describe('saveEditorSession', () => {
         status: 'saved',
         items: []
       })
-    ).rejects.toThrow('Supabase is not configured.');
+    ).rejects.toThrow(APP_MESSAGES.supabaseNotConfigured);
   });
 
   it('creates a shared letter snapshot from the saved session', async () => {

@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/client-auth';
 import { APP_MESSAGES } from '@/lib/messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { moodMeta } from '@/lib/mood';
 import type { DiaryEntrySummary, HomeWeather, MoodDistributionItem, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
 
 interface HomeInsightsPanelProps {
@@ -43,6 +44,32 @@ function getStatusLabel(entry: DiaryEntrySummary | null) {
   return '공개됨';
 }
 
+function getEntryPreviewText(entry: DiaryEntrySummary | null) {
+  if (!entry) {
+    return '달력에서 날짜를 고른 뒤 일기를 쓰거나, 먼저 일정만 가볍게 남겨둘 수도 있어요.';
+  }
+
+  const rawText = entry.bodyText?.trim() || '이 날짜에는 저장된 일기가 있어요. 에디터로 들어가 이어서 다듬거나 공유 링크를 만들 수 있어요.';
+  return rawText.length > 110 ? `${rawText.slice(0, 110).trim()}...` : rawText;
+}
+
+function getEntryBadges(entry: DiaryEntrySummary | null) {
+  if (!entry) return [];
+
+  const badges: string[] = [];
+  const mood = moodMeta.find((item) => item.score === entry.moodScore);
+
+  if (mood) {
+    badges.push(`${mood.emoji} ${mood.label}`);
+  }
+
+  if (entry.hasText) badges.push('텍스트');
+  if (entry.hasPhoto) badges.push('이미지');
+  if (entry.hasSticker) badges.push('스티커');
+
+  return badges;
+}
+
 export function HomeInsightsPanel({
   selectedDate,
   selectedDateLabel,
@@ -68,6 +95,8 @@ export function HomeInsightsPanel({
 
   const selectedDateKey = useMemo(() => toDateKey(selectedDate), [selectedDate]);
   const hasEntry = Boolean(selectedEntry);
+  const entryBadges = useMemo(() => getEntryBadges(selectedEntry), [selectedEntry]);
+  const entryPreviewText = useMemo(() => getEntryPreviewText(selectedEntry), [selectedEntry]);
   const totalMoodCount = useMemo(() => monthlyMoodDistribution.reduce((sum, item) => sum + item.count, 0), [monthlyMoodDistribution]);
   const moodDonutGradient = useMemo(() => {
     if (totalMoodCount === 0) return 'hsl(var(--muted))';
@@ -210,12 +239,39 @@ export function HomeInsightsPanel({
         </div>
 
         <div className="rounded-lg bg-secondary/45 p-ds-4">
-          <p className="text-ds-body font-semibold text-foreground">아직 저장된 일기 제목이 없는 하루예요.</p>
-          <p className="mt-ds-2 text-ds-body text-muted-foreground">
-            {hasEntry
-              ? '이 날짜에는 저장된 일기가 있어요. 일정은 별도로 메인에서 함께 정리할 수 있어요.'
-              : '달력에서 날짜를 고른 뒤 일기를 쓰거나, 먼저 일정만 가볍게 남겨둘 수도 있어요.'}
-          </p>
+          <div className="flex items-start justify-between gap-ds-3">
+            <div className="min-w-0">
+              <p className="text-ds-body font-semibold text-foreground">
+                {selectedEntry?.title?.trim() || (hasEntry ? '제목 없는 기록' : '아직 저장된 일기 제목이 없는 하루예요.')}
+              </p>
+              <p className="mt-ds-2 text-ds-body text-muted-foreground">{entryPreviewText}</p>
+            </div>
+            {selectedEntry?.itemCount ? (
+              <span className="shrink-0 rounded-full bg-white/80 px-ds-3 py-ds-1 text-ds-caption font-semibold text-foreground">
+                요소 {selectedEntry.itemCount}개
+              </span>
+            ) : null}
+          </div>
+
+          {entryBadges.length > 0 ? (
+            <div className="mt-ds-3 flex flex-wrap gap-ds-2">
+              {entryBadges.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-border/70 bg-white/70 px-ds-3 py-ds-1 text-ds-caption font-medium text-foreground"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {selectedEntry?.tags?.length ? (
+            <p className="mt-ds-3 text-ds-caption text-muted-foreground">
+              {selectedEntry.tags.slice(0, 3).map((tag) => `#${tag}`).join(' ')}
+            </p>
+          ) : null}
+
           <div className="mt-ds-4 flex flex-wrap gap-ds-3">
             <button
               type="button"
