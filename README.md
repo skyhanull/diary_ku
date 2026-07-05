@@ -16,11 +16,9 @@
 
 ## 스크린샷
 
-| 홈 캘린더 | 캔버스 에디터 | AI 일기 친구 (RAG) |
-| :---: | :---: | :---: |
-| ![홈 캘린더](docs/screens/home.png) | ![캔버스 에디터](docs/screens/editor.png) | ![AI 채팅](docs/screens/chat.png) |
-
-<!-- TODO: docs/screens/ 에 home.png / editor.png / chat.png 를 넣어주세요. 캡처 체크리스트는 docs/screens/CAPTURE.md 참고. GIF도 좋습니다(파일명만 맞추면 됨). -->
+| 홈 캘린더 | 캔버스 에디터 |
+| :---: | :---: |
+| ![홈 캘린더](docs/screens/home.png) | ![캔버스 에디터](docs/screens/editor.png) |
 
 ## Resume Snapshot
 - 감정 기반 다이어리 SaaS를 Next.js 15, React 19, TypeScript, Supabase로 설계·구현했습니다.
