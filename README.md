@@ -1,6 +1,26 @@
-# Memolie
+# Memolie 📔
+
+> 감정을 기록하고, AI가 과거 일기를 근거로 함께 회고해주는 디지털 다이어리 웹앱
+
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres_+_pgvector-3ECF8E?logo=supabase&logoColor=white)
+![RAG](https://img.shields.io/badge/AI-RAG_chat-8C6A5D)
+
+**🔗 라이브 데모: <!-- TODO: 배포 URL 입력 --> https://your-app.vercel.app**
+회원가입 없이 홈 화면의 **"테스트 계정으로 시작"** 버튼 한 번으로 모든 기능을 둘러볼 수 있습니다.
 
 감정 기록, 캘린더 회고, AI 대화, 편지형 공유를 하나의 흐름으로 연결한 디지털 다이어리 웹앱입니다. 단순 CRUD가 아니라 `홈 캘린더 → 캔버스 에디터 → 저장/복원 → RAG 채팅 → 편지형 공유 → 보관함 검색`까지 이어지는 사용자 경험과 상태 관리, 검색 품질, AI 연동을 함께 설계한 프로젝트입니다.
+
+## 스크린샷
+
+| 홈 캘린더 | 캔버스 에디터 | AI 일기 친구 (RAG) |
+| :---: | :---: | :---: |
+| ![홈 캘린더](docs/screens/home.png) | ![캔버스 에디터](docs/screens/editor.png) | ![AI 채팅](docs/screens/chat.png) |
+
+<!-- TODO: docs/screens/ 에 home.png / editor.png / chat.png 를 넣어주세요. 캡처 체크리스트는 docs/screens/CAPTURE.md 참고. GIF도 좋습니다(파일명만 맞추면 됨). -->
 
 ## Resume Snapshot
 - 감정 기반 다이어리 SaaS를 Next.js 15, React 19, TypeScript, Supabase로 설계·구현했습니다.
@@ -107,3 +127,4 @@ VERCEL_PROJECT_ID
 - 공유 편지 설계: `docs/EDITOR_SHARE_LETTER_PLAN.md`
 - 공유 편지 SQL: `docs/EDITOR_SHARE_LETTER_SQL.md`
 - 보관함 검색 알고리즘: `docs/ARCHIVE_SEARCH_ALGORITHM.md`
+
