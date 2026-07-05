@@ -2,17 +2,15 @@
 // 인사이트 패널: 선택된 날짜의 일기·일정·감정 분포·날씨를 보여주는 우측 패널
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, CalendarPlus2, Cloud, CloudRain, CloudSun, Sparkles, Sun } from 'lucide-react';
+import { ArrowRight, CalendarPlus2 } from 'lucide-react';
 
-import { getDailyFortune } from '@/features/home/lib/home-data';
 import { toDateKey } from '@/features/home/lib/home-calendar';
-import { fetchWeatherForCurrentPosition } from '@/features/home/lib/home-weather';
 import { getCurrentUser } from '@/lib/client-auth';
 import { APP_MESSAGES } from '@/lib/messages';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { moodMeta } from '@/lib/mood';
-import type { DiaryEntrySummary, HomeWeather, MoodDistributionItem, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
+import type { DiaryEntrySummary, MoodDistributionItem, ScheduleItem } from '@/features/home/types/home.types';
 
 interface HomeInsightsPanelProps {
   selectedDate: Date;
@@ -28,13 +26,6 @@ interface HomeInsightsPanelProps {
   isScheduleComposerOpen: boolean;
   onOpenScheduleComposer: () => void;
   onCloseScheduleComposer: () => void;
-}
-
-function getWeatherIcon(icon: WeatherIconName) {
-  if (icon === 'cloud-sun') return CloudSun;
-  if (icon === 'cloud') return Cloud;
-  if (icon === 'rain') return CloudRain;
-  return Sun;
 }
 
 function getStatusLabel(entry: DiaryEntrySummary | null) {
@@ -86,9 +77,6 @@ export function HomeInsightsPanel({
   onCloseScheduleComposer
 }: HomeInsightsPanelProps) {
   const router = useRouter();
-  const todayFortune = getDailyFortune(toDateKey(new Date()));
-  const [weather, setWeather] = useState<HomeWeather | null>(null);
-  const [weatherError, setWeatherError] = useState(false);
   const [scheduleTitle, setScheduleTitle] = useState('');
   const [scheduleNote, setScheduleNote] = useState('');
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
@@ -120,29 +108,6 @@ export function HomeInsightsPanel({
         .sort((left, right) => right.count - left.count || right.score - left.score)[0],
     [monthlyMoodDistribution]
   );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadWeather = async () => {
-      try {
-        const nextWeather = await fetchWeatherForCurrentPosition();
-        if (!cancelled) {
-          setWeather(nextWeather);
-        }
-      } catch {
-        if (!cancelled) {
-          setWeatherError(true);
-        }
-      }
-    };
-
-    void loadWeather();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isScheduleComposerOpen) {
@@ -392,64 +357,6 @@ export function HomeInsightsPanel({
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="relative rounded-xl border border-border border-l-4 border-l-primary bg-card p-ds-card-lg shadow-[0_12px_32px_rgba(52,50,47,0.04)]">
-        <Sparkles className="absolute right-4 top-4 h-10 w-10 text-primary/10" />
-        <div className="flex items-end justify-between gap-ds-4">
-          <div>
-            <h3 className="text-ds-title font-bold italic text-primary">오늘의 운세</h3>
-            <p className="mt-ds-1 text-ds-caption font-bold uppercase tracking-[0.18em] text-muted-foreground">마음 지수</p>
-          </div>
-          <div className="text-right">
-            <div className="font-display text-ds-display font-extrabold text-primary">{todayFortune.score}</div>
-            <div className="mt-ds-1 text-ds-caption font-semibold text-muted-foreground">/ 100</div>
-          </div>
-        </div>
-        <p className="mb-ds-3 mt-ds-5 leading-7 text-foreground">{todayFortune.message}</p>
-      </section>
-
-      <section className="rounded-xl border border-border bg-card p-ds-card shadow-[0_12px_32px_rgba(52,50,47,0.04)]">
-        <div className="mb-ds-6 flex items-center justify-between">
-          <h3 className="text-ds-body font-bold uppercase tracking-[0.2em] text-foreground">날씨</h3>
-          <span className="text-ds-micro font-bold text-muted-foreground">{weather?.locationLabel ?? '불러오는 중'}</span>
-        </div>
-
-        <div className="mb-ds-8 flex items-center gap-ds-6">
-          {weather ? (() => {
-            const CurrentIcon = getWeatherIcon(weather.currentIcon);
-            return <CurrentIcon className="h-16 w-16 text-primary" />;
-          })() : (
-            <Sun className="h-16 w-16 animate-pulse text-primary/60" />
-          )}
-          <div>
-            <div className="font-display text-ds-display font-extrabold text-foreground">{weather?.currentTemperature ?? '--°'}</div>
-            <div className="text-ds-caption font-medium uppercase text-muted-foreground">
-              {weatherError ? '날씨 정보를 불러오지 못했어요' : weather?.currentCondition ?? '현재 날씨 확인 중'}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-ds-2 border-t border-border/80 pt-ds-4">
-          {(weather?.forecast ?? []).map((item) => {
-            const Icon = getWeatherIcon(item.icon);
-            return (
-              <div key={item.label} className="text-center">
-                <div className="mb-ds-1 text-ds-micro font-bold uppercase text-muted-foreground/70">{item.label}</div>
-                <Icon className="mx-auto mb-ds-1 h-5 w-5 text-primary/70" />
-                <div className="text-ds-caption font-bold text-foreground">{item.temperature}</div>
-              </div>
-            );
-          })}
-          {!weather &&
-            Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="text-center">
-                <div className="mb-ds-1 text-ds-micro font-bold uppercase text-muted-foreground/40">-</div>
-                <CloudSun className="mx-auto mb-ds-1 h-5 w-5 text-primary/30" />
-                <div className="text-ds-caption font-bold text-foreground/40">--° / --°</div>
-              </div>
-            ))}
         </div>
       </section>
     </aside>

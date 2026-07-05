@@ -46,7 +46,7 @@ function CalendarCell({
         onSelectDate(day.date);
       }}
       className={[
-        'flex aspect-square w-full flex-col justify-between p-ds-3 text-left text-ds-caption transition-colors duration-200',
+        'flex min-h-[84px] w-full flex-col justify-between p-ds-3 text-left text-ds-caption transition-colors duration-200',
         baseClassName,
         selectedClassName,
         day.inMonth ? 'cursor-pointer' : ''
@@ -108,8 +108,8 @@ export function MonthlyCalendar({
   onToday
 }: MonthlyCalendarProps) {
   return (
-    <Card className="col-span-12 border-border/80 bg-card p-ds-card shadow-[0_12px_32px_rgba(52,50,47,0.04)] lg:col-span-8 lg:p-ds-card-lg">
-      <header className="mb-ds-8 flex items-end justify-between gap-ds-4">
+    <Card className="border-border/80 bg-card p-ds-card shadow-[0_12px_32px_rgba(52,50,47,0.04)] lg:p-ds-card-lg">
+      <header className="mb-ds-6 flex items-end justify-between gap-ds-4">
         <div>
           <h1 className="font-display text-ds-display font-extrabold text-primary">{monthLabel}</h1>
           <p className="mt-ds-1 text-ds-body font-medium text-muted-foreground">{yearLabel}</p>

@@ -1,14 +1,19 @@
 'use client';
 // 홈 대시보드: 캘린더·인사이트 패널을 조합하고 일기·일정 데이터를 불러와 관리한다
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Cloud, CloudRain, CloudSun, Flame, PenLine, Sun } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
+import { getCurrentUser } from '@/lib/client-auth';
 import { MonthlyCalendar } from '@/features/home/components/MonthlyCalendar';
 import { DemoAccountPrompt } from '@/features/home/components/DemoAccountPrompt';
 import { HomeInsightsPanel } from '@/features/home/components/HomeInsightsPanel';
 import { buildCalendarDays, getSelectedEntry, monthLabel, toDateKey, yearLabel } from '@/features/home/lib/home-calendar';
 import { loadMonthlyDiaryEntrySummaries } from '@/features/home/lib/diary-summary';
 import { createSchedule, loadMonthlySchedules, removeSchedule, updateSchedule } from '@/features/home/lib/home-schedules';
-import type { DiaryEntrySummary, MoodDistributionItem, ScheduleItem } from '@/features/home/types/home.types';
+import { fetchWeatherForCurrentPosition } from '@/features/home/lib/home-weather';
+import type { DiaryEntrySummary, HomeWeather, MoodDistributionItem, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
 import { APP_MESSAGES, getUserFacingErrorMessage, isAuthRequiredMessage } from '@/lib/messages';
 import { moodMeta } from '@/lib/mood';
 import { formatSelectedDate } from '@/lib/date';
@@ -35,6 +40,14 @@ function buildMonthlyMoodDistribution(entries: DiaryEntrySummary[]): MoodDistrib
   });
 }
 
+// 날씨 상태값에 맞는 아이콘 컴포넌트를 반환한다
+function getWeatherIcon(icon: WeatherIconName) {
+  if (icon === 'cloud-sun') return CloudSun;
+  if (icon === 'cloud') return Cloud;
+  if (icon === 'rain') return CloudRain;
+  return Sun;
+}
+
 // 홈 페이지의 최상위 컨테이너로 캘린더와 인사이트 패널을 조합하고 데이터 상태를 관리한다
 export function HomeDashboard() {
   const [today] = useState(() => new Date());
@@ -45,6 +58,9 @@ export function HomeDashboard() {
   const [isScheduleComposerOpen, setIsScheduleComposerOpen] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isScheduleSaving, setIsScheduleSaving] = useState(false);
+  const [todayMonthEntries, setTodayMonthEntries] = useState<DiaryEntrySummary[]>([]);
+  const [weather, setWeather] = useState<HomeWeather | null>(null);
+  const router = useRouter();
 
   // offset 방향으로 표시 월을 이동하고 선택 날짜를 해당 월 1일로 초기화한다
   const moveMonth = (offset: number) => {
@@ -101,6 +117,55 @@ export function HomeDashboard() {
       cancelled = true;
     };
   }, [visibleMonth]);
+
+  // 상단 상태바(스트릭·오늘 쓰기)는 캘린더 이동과 무관하게 항상 "오늘"이 속한 달 기준으로 계산한다
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncTodayMonth = async () => {
+      try {
+        const list = await loadMonthlyDiaryEntrySummaries(new Date(today.getFullYear(), today.getMonth(), 1));
+        if (!cancelled) setTodayMonthEntries(list);
+      } catch {
+        if (!cancelled) setTodayMonthEntries([]);
+      }
+    };
+
+    void syncTodayMonth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [today]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchWeatherForCurrentPosition()
+      .then((next) => {
+        if (!cancelled) setWeather(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const todayKey = useMemo(() => toDateKey(today), [today]);
+  const todayHasEntry = useMemo(() => todayMonthEntries.some((entry) => entry.date === todayKey), [todayMonthEntries, todayKey]);
+  const monthRecordedDays = todayMonthEntries.length;
+  const daysInThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  // 오늘(또는 어제)부터 거꾸로 세어 연속 기록 일수를 구한다. 로드된 이번 달 범위 안에서만 계산한다.
+  const streak = useMemo(() => {
+    const recorded = new Set(todayMonthEntries.map((entry) => entry.date));
+    let count = 0;
+    const cursor = new Date(today);
+    if (!recorded.has(toDateKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+    while (recorded.has(toDateKey(cursor))) {
+      count += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }, [todayMonthEntries, today]);
 
   // 표시 월·선택 날짜·일기·일정이 바뀔 때마다 캘린더 그리드 데이터를 재계산한다
   const calendarDays = useMemo(
@@ -185,23 +250,60 @@ export function HomeDashboard() {
     }
   };
 
+  // 오늘 일기 에디터로 이동한다. 미로그인 시 안내 후 중단한다.
+  const handleWriteToday = async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.alert(APP_MESSAGES.authRequiredAlert);
+      return;
+    }
+    router.push(`/editor/${todayKey}`);
+  };
+
   return (
     <>
       <DemoAccountPrompt />
-      <main className="mx-auto grid max-w-[1440px] grid-cols-12 gap-ds-8 px-ds-page pb-ds-12 pt-ds-8 lg:px-ds-page-lg">
-        <MonthlyCalendar
-          monthLabel={monthLabel(visibleMonth)}
-          yearLabel={yearLabel(visibleMonth)}
-          days={calendarDays}
-          onSelectDate={setSelectedDate}
-          onPrevMonth={() => moveMonth(-1)}
-          onNextMonth={() => moveMonth(1)}
-          onToday={() => {
-            setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
-            setSelectedDate(today);
-            setIsScheduleComposerOpen(false);
-          }}
-        />
+      <main className="mx-auto grid max-w-7xl grid-cols-12 items-start gap-ds-8 px-ds-page pb-ds-12 pt-ds-8 lg:px-ds-page-lg">
+        <section className="col-span-12 flex flex-col gap-ds-4 rounded-xl border border-border bg-card p-ds-card shadow-[0_12px_32px_rgba(52,50,47,0.04)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-ds-4">
+            <span className="flex items-center gap-ds-2 text-ds-title font-bold text-foreground">
+              <Flame className={`h-5 w-5 ${streak > 0 ? 'text-primary' : 'text-muted-foreground/50'}`} />
+              {streak > 0 ? `${streak}일 연속 기록` : '연속 기록 시작 전'}
+            </span>
+            <span className="text-ds-body text-muted-foreground">
+              이번 달 <span className="font-semibold text-foreground">{monthRecordedDays}일</span> / {daysInThisMonth}일 기록
+            </span>
+            {weather ? (() => {
+              const WeatherIcon = getWeatherIcon(weather.currentIcon);
+              return (
+                <span className="flex items-center gap-ds-1 text-ds-body text-muted-foreground" title={weather.locationLabel}>
+                  <WeatherIcon className="h-4 w-4 text-primary" />
+                  {weather.currentTemperature}
+                </span>
+              );
+            })() : null}
+          </div>
+          <Button className="h-11 shrink-0" onClick={() => void handleWriteToday()}>
+            <PenLine className="mr-ds-2 h-4 w-4" />
+            {todayHasEntry ? '오늘 일기 이어쓰기' : '오늘 일기 쓰기'}
+          </Button>
+        </section>
+
+        <div className="col-span-12 lg:col-span-8">
+          <MonthlyCalendar
+            monthLabel={monthLabel(visibleMonth)}
+            yearLabel={yearLabel(visibleMonth)}
+            days={calendarDays}
+            onSelectDate={setSelectedDate}
+            onPrevMonth={() => moveMonth(-1)}
+            onNextMonth={() => moveMonth(1)}
+            onToday={() => {
+              setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+              setSelectedDate(today);
+              setIsScheduleComposerOpen(false);
+            }}
+          />
+        </div>
 
         <HomeInsightsPanel
           selectedDate={selectedDate}
