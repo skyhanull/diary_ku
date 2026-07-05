@@ -13,7 +13,7 @@ interface EditorTutorialOverlayProps {
 export function EditorTutorialOverlay({ step, stepIndex, layout, onPrevious, onNext }: EditorTutorialOverlayProps) {
   return (
     <div className="fixed inset-0 z-[120] bg-[rgba(38,30,28,0.52)] backdrop-blur-[3px]">
-      {step.id === "sidebar" ? <div className="pointer-events-none fixed left-1 top-[75px] h-[calc(100vh-82px)] w-20 rounded-[28px] border-[5px] border-focus shadow-[0_0_0_9999px_rgba(0,0,0,0.06)]" /> : null}
+      {step.id === "sidebar" ? <div className="pointer-events-none fixed left-1 top-[75px] h-[calc(100vh-82px)] w-16 rounded-[20px] border-[5px] border-focus shadow-[0_0_0_9999px_rgba(0,0,0,0.06)]" /> : null}
       {step.id === "canvas" ? <div className="pointer-events-none fixed left-[98px] right-[332px] top-[60px] bottom-2 rounded-[28px] border-[5px] border-focus shadow-[0_0_0_9999px_rgba(0,0,0,0.06)]" /> : null}
       {step.id === "panel" ? <div className="pointer-events-none fixed right-2 top-[75px] h-[calc(100vh-82px)] w-[304px] rounded-[28px] border-[5px] border-focus shadow-[0_0_0_9999px_rgba(0,0,0,0.06)]" /> : null}
 

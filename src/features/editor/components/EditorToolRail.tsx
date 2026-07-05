@@ -19,7 +19,7 @@ export const EditorToolRail = forwardRef<HTMLElement, EditorToolRailProps>(({ ac
   };
 
   return (
-    <aside ref={ref} className="fixed left-0 top-16 z-40 flex h-[calc(100vh-64px)] w-20 flex-col items-center gap-ds-6 rounded-r-[28px] border-r border-line bg-oatmeal py-ds-6">
+    <aside ref={ref} className="fixed left-0 top-16 z-40 flex h-[calc(100vh-64px)] w-16 flex-col items-center gap-ds-3 rounded-r-[20px] border-r border-line bg-oatmeal py-ds-4">
       <ToolIconButton onClick={() => openPanel("base")} active={activePanel === "base"}>
         <MousePointer2 className="h-5 w-5" />
       </ToolIconButton>
