@@ -1,8 +1,8 @@
 'use client';
 // 단일 페이지 캔버스: 텍스트·스티커·이미지 아이템을 드래그·리사이즈로 자유 배치한다
 import Image from 'next/image';
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor as TiptapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -18,6 +18,7 @@ const defaultTextItemFontSize = 16;
 
 interface EditorCanvasSingleProps {
   background: string;
+  bodyFontSize?: number;
   items: EditorItem[];
   selectedItemId: string | null;
   zoom: number;
@@ -35,6 +36,7 @@ interface EditorCanvasSingleProps {
   onResizeItem?: (itemId: string, width: number, height: number) => void;
   onUpdateTextFontSize?: (itemId: string, fontSize: number) => void;
   onUpdateTextColor?: (itemId: string, color: string) => void;
+  onUpdateTextContent?: (itemId: string, content: string) => void;
   onDeleteItem?: (itemId: string) => void;
   onDropAddItem: (input: CreateEditorItemInput) => void;
   onPlaceTextAt: (x: number, y: number) => void;
@@ -75,14 +77,6 @@ interface DraftItemGeometry {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-function getPreviewHtml(html: string) {
-  if (!html || html.trim() === '') {
-    return '<p>오늘의 기록을 시작해보세요.</p>';
-  }
-
-  return html;
 }
 
 const HANDLE_POSITIONS: Record<ResizeHandle, string> = {
@@ -182,6 +176,7 @@ const StickerItemVisual = memo(function StickerItemVisual({
 
 export function EditorCanvasSingle({
   background,
+  bodyFontSize = 16,
   items,
   selectedItemId,
   zoom,
@@ -199,6 +194,7 @@ export function EditorCanvasSingle({
   onResizeItem,
   onUpdateTextFontSize,
   onUpdateTextColor,
+  onUpdateTextContent,
   onDeleteItem,
   onDropAddItem,
   onPlaceTextAt,
@@ -215,6 +211,7 @@ export function EditorCanvasSingle({
   const pendingCommitRef = useRef<Record<string, DraftItemGeometry>>({});
   const animationFrameRef = useRef<number | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [draftFrame, setDraftFrame] = useState(0);
   const diaryEditor = useEditor({
     immediatelyRender: false,
@@ -281,6 +278,12 @@ export function EditorCanvasSingle({
   useEffect(() => {
     diaryEditorRef.current = diaryEditor;
   }, [diaryEditor]);
+
+  useEffect(() => {
+    if (!diaryEditor) return;
+    // 선택 도구일 때만 본문을 편집 가능하게 해, 텍스트/스티커/이미지 도구의 클릭 배치와 충돌하지 않게 한다
+    diaryEditor.setEditable(notebookVariant || activeTool === 'select');
+  }, [diaryEditor, notebookVariant, activeTool]);
 
   useEffect(() => {
     if (!diaryEditor) return;
@@ -595,7 +598,6 @@ export function EditorCanvasSingle({
     () => [...items].filter((item) => item.type !== 'text').sort((a, b) => a.zIndex - b.zIndex),
     [items]
   );
-  const deferredDiaryText = useDeferredValue(diaryText);
 
   const theme = notebookTheme ?? {
     workspaceBg: '#f3f2ee',
@@ -661,12 +663,12 @@ export function EditorCanvasSingle({
           alignItems: 'center',
           justifyContent: 'center',
           width: '100%',
-          minHeight: '660px',
+          minHeight: '560px',
           backgroundColor: theme.workspaceBg,
           backgroundImage: theme.workspacePattern,
           backgroundSize: '16px 16px',
           borderRadius: '12px',
-          padding: '20px'
+          padding: '16px'
         }}
       >
         <div
@@ -674,7 +676,7 @@ export function EditorCanvasSingle({
           className="relative overflow-hidden touch-none"
           style={{
             width: '100%',
-            height: '600px',
+            height: '500px',
             backgroundColor: theme.paperBg,
             border: `2px solid ${theme.paperBorder}`,
             borderRadius: '10px',
@@ -761,34 +763,31 @@ export function EditorCanvasSingle({
   }
 
   const allItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
-  const previewHtml = getPreviewHtml(deferredDiaryText);
 
   return (
     <section className="rounded-xl border bg-card p-ds-4">
       <div
-        className="grid min-h-[620px] place-items-center rounded-xl border"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, rgba(60,60,60,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(60,60,60,0.08) 1px, transparent 1px)',
-          backgroundSize: '20px 20px'
-        }}
+        className="grid min-h-[520px] place-items-center rounded-xl border"
+        style={{ backgroundColor: background }}
       >
         <div className="origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
           <div
             ref={pageRef}
-            className="relative aspect-[3/4] w-[700px] overflow-hidden rounded-xl border-2 bg-white shadow-lg"
+            className="relative aspect-[3/4] w-[700px] overflow-hidden rounded-xl"
             style={{ backgroundColor: background }}
             onClick={handleCanvasClick}
             onDragOver={(event) => event.preventDefault()}
             onDrop={handleDrop}
           >
-            <div className="absolute inset-x-0 top-0 z-0 min-h-[430px] border-b border-line-pale bg-gradient-to-b from-paper-cream to-paper-warm px-ds-7 pb-ds-8 pt-ds-7">
+            <div className="absolute inset-x-0 top-0 z-0 min-h-[430px] px-ds-7 pb-ds-8 pt-ds-7">
               <p className="text-ds-micro font-semibold uppercase tracking-[0.24em] text-cedar/70">Diary Body</p>
               {diaryDate ? <p className="mt-ds-2 text-ds-body font-semibold text-ink-warm">{diaryDate}</p> : null}
               <div
-                className="mt-ds-4 max-h-[340px] w-full overflow-hidden whitespace-pre-wrap break-words text-ds-body text-ink-soft [&_p]:mb-ds-3 [&_p:last-child]:mb-0"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
+                className="mt-ds-4 max-h-[340px] overflow-y-auto text-ink-soft"
+                style={{ '--body-font-size': `${bodyFontSize}px` } as CSSProperties}
+              >
+                <EditorContent editor={diaryEditor} />
+              </div>
             </div>
 
             {textToolbar ? (
@@ -860,9 +859,34 @@ export function EditorCanvasSingle({
                     event.stopPropagation();
                     onSelectItem(item.id);
                   }}
-                  onPointerDown={(event) => beginDrag(event, item)}
+                  onDoubleClick={item.type === 'text' ? (event) => {
+                    event.stopPropagation();
+                    onSelectItem(item.id);
+                    setEditingItemId(item.id);
+                  } : undefined}
+                  onPointerDown={(event) => {
+                    if (editingItemId === item.id) return;
+                    beginDrag(event, item);
+                  }}
                 >
-                  <CanvasItemVisual item={item} zoom={zoom} />
+                  {item.type === 'text' && editingItemId === item.id ? (
+                    <textarea
+                      autoFocus
+                      value={item.payload.text?.content ?? ''}
+                      onChange={(event) => onUpdateTextContent?.(item.id, event.target.value)}
+                      onBlur={() => setEditingItemId(null)}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
+                      className="h-full w-full resize-none rounded bg-white p-ds-2 outline-none ring-1 ring-primary"
+                      style={{
+                        fontSize: item.payload.text?.fontSize ?? 16,
+                        color: item.payload.text?.color ?? '#111827',
+                        fontFamily: item.payload.text?.fontFamily ?? 'inherit'
+                      }}
+                    />
+                  ) : (
+                    <CanvasItemVisual item={item} zoom={zoom} />
+                  )}
 
                   {isSelected ? (
                     <button

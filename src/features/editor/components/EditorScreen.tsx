@@ -2,7 +2,7 @@
 // 에디터 메인 화면: 캔버스·툴바·사이드패널·AI 채팅을 조합하는 최상위 컴포넌트
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, MessageCircle, Redo2, Send, Undo2 } from "lucide-react";
+import { Check, Redo2, Send, Undo2 } from "lucide-react";
 
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -20,9 +20,8 @@ import { useEditorState } from "@/features/editor/hooks/useEditorState";
 import { useEditorTutorial } from "@/features/editor/hooks/useEditorTutorial";
 import { loadEditorSession } from "@/features/editor/lib/editor-persistence";
 import type { CreateEditorItemInput, EditorSidePanel as EditorSidePanelName, EditorTool, SharedLetterTheme } from "@/features/editor/types/editor.types";
-import { DiaryChat } from "@/features/chat/components/DiaryChat";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { formatDiaryDate, formatSaveTime } from "@/lib/date";
+import { formatDiaryDate } from "@/lib/date";
 import { APP_MESSAGES, getUserFacingErrorMessage } from "@/lib/messages";
 
 interface EditorScreenProps {
@@ -51,10 +50,11 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [activeTool, setActiveTool] = useState<EditorTool>("select");
   const [activePanel, setActivePanel] = useState<EditorSidePanelName>("base");
   const [textDraft, setTextDraft] = useState("새 텍스트");
-  const [zoom, setZoom] = useState(1);
+  const [zoom] = useState(1);
+  const [canvasBackground, setCanvasBackground] = useState("#fffdf9");
+  const [bodyFontSize, setBodyFontSize] = useState(16);
   const [isLoading, setIsLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [shareRecipientName, setShareRecipientName] = useState("");
   const [shareTheme, setShareTheme] = useState<SharedLetterTheme>("paper");
 
@@ -64,7 +64,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const lastAutosaveSignatureRef = useRef<string | null>(null);
 
   const meta = useEditorMeta();
-  const { activeMoodIndex, moodEmoji, entryTitle, entryTags, bodyHtml, bodyText, isBodyDirty, hasMetaChanges, setActiveMoodIndex, setEntryTitle, handleBodyHtmlChange, handleBodyTextChange, syncFromEntry, commitSnapshot, addTag, removeTag } = meta;
+  const { activeMoodIndex, moodEmoji, entryTitle, entryTags, bodyHtml, hasMetaChanges, setActiveMoodIndex, setEntryTitle, handleBodyHtmlChange, syncFromEntry, commitSnapshot, addTag, removeTag } = meta;
 
   const hasUnsavedChanges = state.isDirty || hasMetaChanges;
 
@@ -75,8 +75,8 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
 
   const {
     isSaving, isBodySaving, isAutosaving, isCreatingShare, isSaveSlow,
-    saveState, lastSavedAt, sharedLetterUrl, shareMessage, saveMessage, saveError,
-    setSaveMessage, setSaveError, handleSave, handleSaveBody, handleAutosave,
+    saveState, sharedLetterUrl, shareMessage, saveMessage, saveError,
+    setSaveMessage, setSaveError, handleSave, handleAutosave,
     handleFlushPendingSave, handleCreateShare, handleCopyShareLink,
   } = useEditorPersistenceActions({
     pageId,
@@ -113,9 +113,8 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
     if (isSaveSlow) return "네트워크가 느려 저장이 지연되고 있어요.";
     if (saveState === "error") return "저장에 실패했어요.";
     if (hasUnsavedChanges) return "저장 안 된 변경사항이 있어요.";
-    const formattedTime = formatSaveTime(lastSavedAt);
-    return formattedTime ? `${formattedTime} 저장됨` : "모든 변경사항이 저장됐어요.";
-  }, [hasUnsavedChanges, isAutosaving, isBodySaving, isLoading, isSaveSlow, isSaving, lastSavedAt, saveState]);
+    return "";
+  }, [hasUnsavedChanges, isAutosaving, isBodySaving, isLoading, isSaveSlow, isSaving, saveState]);
 
   const updateTextItem = (itemId: string, patch: Partial<NonNullable<typeof selectedTextItem>["payload"]["text"]>) => {
     const item = state.items.find((c) => c.id === itemId);
@@ -244,9 +243,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         showSearch={false}
         actions={
           <>
-            <Button size="sm" variant="ghost" aria-label={isChatOpen ? "AI 친구 닫기" : "AI 친구에게 묻기"} aria-pressed={isChatOpen} onClick={() => setIsChatOpen((v) => !v)}>
-              <MessageCircle className="h-4 w-4" />
-            </Button>
             <Button size="sm" variant="ghost" aria-label="실행 취소 (⌘Z)" onClick={undo} disabled={!canUndo}>
               <Undo2 className="h-4 w-4" />
             </Button>
@@ -270,63 +266,96 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
       <main className="flex h-[calc(100vh-64px)] pt-0">
         <EditorToolRail ref={sidebarRef} activePanel={activePanel} onChangePanel={setActivePanel} onChangeTool={setActiveTool} />
 
-        <section className="ml-20 mr-80 flex-1 overflow-y-auto bg-vellum px-ds-8 py-0">
-          <div className="mx-auto mb-ds-4 flex max-w-6xl items-center justify-between gap-ds-4">
+        <section className="ml-16 mr-[360px] flex-1 overflow-y-auto bg-vellum px-ds-6 py-0">
+          <div className="mx-auto mb-ds-3 flex max-w-5xl items-center justify-between gap-ds-4">
             <div>
-              <h1 className="font-display text-ds-brand font-bold text-ink">{diaryDate}</h1>
-              <p className={`mt-ds-1 text-ds-caption ${saveState === "error" ? "text-rose-danger" : hasUnsavedChanges ? "text-cedar" : "text-cedar/80"}`}>
-                {saveStatusLabel}
-              </p>
+              <h1 className="font-display text-ds-modal-title font-bold text-ink">{diaryDate}</h1>
+              {saveStatusLabel ? (
+                <p className={`mt-ds-1 text-ds-caption ${saveState === "error" ? "text-rose-danger" : hasUnsavedChanges ? "text-cedar" : "text-cedar/80"}`}>
+                  {saveStatusLabel}
+                </p>
+              ) : null}
             </div>
 
-            <div className="flex gap-ds-2 rounded-full bg-oatmeal p-ds-2">
-              {moodOptions.map((icon, index) => (
-                <button
-                  key={icon}
-                  type="button"
-                  onClick={() => setActiveMoodIndex(index)}
-                  className={`flex h-10 w-10 items-center justify-center rounded-full ${activeMoodIndex === index ? "bg-white shadow-sm" : ""}`}
-                >
-                  <span className="text-ds-title">{icon}</span>
-                </button>
-              ))}
+            <div className="flex items-center gap-ds-3">
+              <div className="flex items-center gap-ds-1 rounded-full bg-oatmeal p-ds-1">
+                <span className="px-ds-2 text-ds-caption font-semibold text-ink-warm">본문</span>
+                {[12, 16, 20].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setBodyFontSize(size)}
+                    className={`flex h-8 items-center justify-center rounded-full px-ds-2 text-ds-caption font-semibold ${bodyFontSize === size ? "bg-white text-ink shadow-sm" : "text-ink-warm"}`}
+                    aria-pressed={bodyFontSize === size}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-ds-2 rounded-full bg-oatmeal px-ds-3 py-ds-1.5">
+                <span className="text-ds-caption font-semibold text-ink-warm">종이</span>
+                <input
+                  type="color"
+                  value={canvasBackground}
+                  onChange={(event) => setCanvasBackground(event.target.value)}
+                  className="h-6 w-6 cursor-pointer rounded-full border border-line bg-transparent p-0"
+                  aria-label="종이 색상"
+                />
+              </label>
+
+              <div className="flex gap-ds-1 rounded-full bg-oatmeal p-ds-1">
+                {moodOptions.map((icon, index) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setActiveMoodIndex(index)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full ${activeMoodIndex === index ? "bg-white shadow-sm" : ""}`}
+                  >
+                    <span className="text-ds-body">{icon}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {isLoading ? <NoticeBox className="mx-auto mb-ds-4 max-w-6xl">저장된 일기를 불러오는 중이에요...</NoticeBox> : null}
+          {isLoading ? <NoticeBox className="mx-auto mb-ds-4 max-w-5xl">저장된 일기를 불러오는 중이에요...</NoticeBox> : null}
           {saveMessage && !saveMessage.includes("불러왔어요") ? (
-            <NoticeBox tone="success" className="mx-auto mb-ds-4 max-w-6xl">{saveMessage}</NoticeBox>
+            <NoticeBox tone="success" className="mx-auto mb-ds-4 max-w-5xl">{saveMessage}</NoticeBox>
           ) : null}
           {saveError ? (
-            <NoticeBox tone="error" className="mx-auto mb-ds-4 flex max-w-6xl items-center justify-between gap-ds-3">
+            <NoticeBox tone="error" className="mx-auto mb-ds-4 flex max-w-5xl items-center justify-between gap-ds-3">
               <span>{saveError}</span>
               <Button size="sm" variant="outline" onClick={() => void handleSave()} disabled={isPersistBusy}>다시 저장</Button>
             </NoticeBox>
           ) : null}
           {isSaveSlow ? (
-            <NoticeBox className="mx-auto mb-ds-4 max-w-6xl">
+            <NoticeBox className="mx-auto mb-ds-4 max-w-5xl">
               네트워크가 느려 저장이 평소보다 오래 걸리고 있어요. 잠시만 기다리거나 직접 다시 저장해보세요.
             </NoticeBox>
           ) : null}
 
-          <SurfaceCard tone="soft" className="mx-auto mb-ds-4 max-w-6xl p-ds-4">
-            <label className="mb-ds-2 block text-ds-body font-semibold text-ink">일기 제목</label>
-            <Input
-              value={entryTitle}
-              onChange={(e) => setEntryTitle(e.target.value)}
-              placeholder="예: 비 오는 토요일의 산책"
-              className="h-12 rounded-2xl border-line bg-paper"
-            />
-            <div className="mt-ds-3">
-              <label className="mb-ds-2 block text-ds-body font-semibold text-ink">태그</label>
+          <SurfaceCard tone="soft" className="mx-auto mb-ds-3 flex max-w-5xl flex-col gap-ds-2 p-ds-3 sm:flex-row sm:items-start">
+            <div className="flex-1">
+              <label className="mb-ds-1 block text-ds-caption font-semibold text-ink">일기 제목</label>
+              <Input
+                value={entryTitle}
+                onChange={(e) => setEntryTitle(e.target.value)}
+                placeholder="예: 비 오는 토요일의 산책"
+                className="h-9 rounded-xl border-line bg-paper"
+              />
+            </div>
+            <div className="sm:w-[300px]">
+              <label className="mb-ds-1 block text-ds-caption font-semibold text-ink">태그</label>
               <TagInput tags={entryTags} onAdd={addTag} onRemove={removeTag} />
             </div>
           </SurfaceCard>
 
-          <div ref={canvasRef} className="mx-auto max-w-6xl">
+          <div ref={canvasRef} className="mx-auto max-w-5xl">
             <ErrorBoundary>
             <EditorCanvasSingle
-              background="#fffdf9"
+              background={canvasBackground}
+              bodyFontSize={bodyFontSize}
               items={state.items.filter((item) => item.pageSide === "single" || item.pageSide === "left")}
               selectedItemId={state.selectedItemId}
               zoom={zoom}
@@ -343,6 +372,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
               textToolbar={selectedTextItem ?? null}
               onUpdateTextFontSize={(itemId, fontSize) => updateTextItem(itemId, { fontSize })}
               onUpdateTextColor={(itemId, color) => updateTextItem(itemId, { color })}
+              onUpdateTextContent={(itemId, content) => updateTextItem(itemId, { content })}
               onDeleteItem={removeItem}
               onDropAddItem={(input) => addEditorItem({ ...input, pageSide: "single" })}
               onPlaceTextAt={handlePlaceTextAt}
@@ -354,10 +384,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         <EditorSidePanel
           ref={panelRef}
           activePanel={activePanel}
-          bodyText={bodyText}
-          isBodyDirty={isBodyDirty}
-          isBodySaving={isBodySaving}
-          isAutosaving={isAutosaving}
           textDraft={textDraft}
           aiStickerPrompt={media.aiStickerPrompt}
           isGeneratingSticker={media.isGeneratingSticker}
@@ -367,10 +393,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           isSearchingGif={media.isSearchingGif}
           selectedItem={selectedItem}
           selectedTextItem={selectedTextItem}
-          zoom={zoom}
           isSaving={isSaving}
-          onBodyTextChange={handleBodyTextChange}
-          onSaveBody={handleSaveBody}
           onTextDraftChange={setTextDraft}
           onAddText={handleAddText}
           onAiStickerPromptChange={(value) => { media.setAiStickerPrompt(value); media.clearStickerPreview(); }}
@@ -386,7 +409,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           onUpdateItem={updateItem}
           onUpdateTextItem={updateTextItem}
           onRemoveItem={removeItem}
-          onChangeZoom={setZoom}
           onSave={handleSave}
         />
       </main>
@@ -418,9 +440,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
         />
       ) : null}
 
-      <ErrorBoundary fallback={null}>
-        <DiaryChat entryDate={pageId} isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-      </ErrorBoundary>
     </div>
   );
 }

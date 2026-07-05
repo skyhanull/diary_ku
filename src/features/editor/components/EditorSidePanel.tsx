@@ -2,7 +2,7 @@
 // 에디터 사이드패널: 선택된 아이템의 폰트·색상·크기 등 속성을 편집하는 패널
 import Image from "next/image";
 import { forwardRef } from "react";
-import { Check, Minus, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { Check, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,10 +35,6 @@ const stickerPresets = [
 
 interface EditorSidePanelProps {
   activePanel: EditorSidePanelName;
-  bodyText: string;
-  isBodyDirty: boolean;
-  isBodySaving: boolean;
-  isAutosaving: boolean;
   textDraft: string;
   aiStickerPrompt: string;
   isGeneratingSticker: boolean;
@@ -48,10 +44,7 @@ interface EditorSidePanelProps {
   isSearchingGif: boolean;
   selectedItem: EditorItem | null;
   selectedTextItem: EditorItem | null;
-  zoom: number;
   isSaving: boolean;
-  onBodyTextChange: (value: string) => void;
-  onSaveBody: () => void;
   onTextDraftChange: (value: string) => void;
   onAddText: () => void;
   onAiStickerPromptChange: (value: string) => void;
@@ -67,7 +60,6 @@ interface EditorSidePanelProps {
   onUpdateItem: (itemId: string, patch: Partial<EditorItem>) => void;
   onUpdateTextItem: (itemId: string, patch: Partial<TextPayload>) => void;
   onRemoveItem: (itemId: string) => void;
-  onChangeZoom: (zoom: number) => void;
   onSave: () => void;
 }
 
@@ -89,10 +81,6 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
   (
     {
       activePanel,
-      bodyText,
-      isBodyDirty,
-      isBodySaving,
-      isAutosaving,
       textDraft,
       aiStickerPrompt,
       isGeneratingSticker,
@@ -102,10 +90,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
       isSearchingGif,
       selectedItem,
       selectedTextItem,
-      zoom,
       isSaving,
-      onBodyTextChange,
-      onSaveBody,
       onTextDraftChange,
       onAddText,
       onAiStickerPromptChange,
@@ -121,40 +106,21 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
       onUpdateItem,
       onUpdateTextItem,
       onRemoveItem,
-      onChangeZoom,
       onSave,
     },
     ref,
   ) => {
     return (
-      <aside ref={ref} className="fixed right-0 top-16 z-40 flex h-[calc(100vh-64px)] w-80 flex-col overflow-y-auto rounded-l-[28px] border-l border-line bg-vellum/90 p-6 backdrop-blur">
-        <div className="mb-ds-6">
-          <h2 className="font-display text-ds-title font-bold text-ink">{panelTitle(activePanel)}</h2>
-          <p className="text-ds-body text-cedar">{panelDescription(activePanel)}</p>
+      <aside ref={ref} className="fixed right-0 top-16 z-40 flex h-[calc(100vh-64px)] w-[360px] flex-col overflow-y-auto rounded-l-[28px] border-l border-line bg-vellum/90 p-6 backdrop-blur">
+        <div className="mb-ds-5">
+          <h2 className="font-display text-ds-body font-bold text-ink">{panelTitle(activePanel)}</h2>
+          <p className="text-ds-caption text-cedar">{panelDescription(activePanel)}</p>
         </div>
 
         <div className="space-y-ds-6">
-          {activePanel === "base" ? (
-            <SurfaceCard className="p-ds-4">
-              <div className="mb-ds-3 flex items-center justify-between gap-ds-3">
-                <div>
-                  <p className="text-ds-body font-semibold text-ink">본문</p>
-                </div>
-                <Button size="sm" onClick={onSaveBody} disabled={isBodySaving || isAutosaving || !isBodyDirty}>
-                  {isBodySaving ? "본문 저장 중..." : isAutosaving ? "자동 저장 중..." : isBodyDirty ? "본문 저장" : "본문 저장됨"}
-                </Button>
-              </div>
-              <textarea value={bodyText} onChange={(event) => onBodyTextChange(event.target.value)} className="min-h-32 w-full rounded-2xl border border-line bg-paper p-ds-3 text-ds-body outline-none" placeholder="오늘 있었던 일을 편하게 적어보세요." />
-              <div className="mt-ds-2 flex items-center justify-between text-ds-caption text-cedar">
-                <span>{bodyText.trim().length}자</span>
-                <span>{isAutosaving ? "본문 자동 저장 중" : isBodyDirty ? "아직 본문 저장 전" : "본문 저장 완료"}</span>
-              </div>
-            </SurfaceCard>
-          ) : null}
-
           {activePanel === "text" ? (
             <SurfaceCard className="p-ds-4">
-              <p className="mb-ds-1 text-ds-body font-semibold text-ink">텍스트 요소 추가</p>
+              <p className="mb-ds-1 text-ds-caption font-semibold text-ink">텍스트 요소 추가</p>
               <p className="mb-ds-3 text-ds-caption text-cedar">문구를 입력한 뒤 추가하거나, 캔버스를 눌러 원하는 위치에 놓을 수 있어요.</p>
               <Input value={textDraft} onChange={(event) => onTextDraftChange(event.target.value)} placeholder="캔버스에 올릴 텍스트" />
               <Button className="mt-ds-3 w-full" size="sm" onClick={onAddText}>
@@ -166,7 +132,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
           {activePanel === "sticker" ? (
             <>
               <SurfaceCard className="p-ds-4">
-                <p className="mb-ds-1 text-ds-body font-semibold text-ink">AI 스티커 검색</p>
+                <p className="mb-ds-1 text-ds-caption font-semibold text-ink">AI 스티커 검색</p>
                 <p className="mb-ds-3 text-ds-caption text-cedar">검색어를 넣으면 AI가 스티커 결과를 만들고, 확인 후 추가할 수 있어요.</p>
                 <Input value={aiStickerPrompt} onChange={(event) => onAiStickerPromptChange(event.target.value)} placeholder="예: 하트를 든 고양이 스티커" />
                 <Button className="mt-ds-3 w-full" size="sm" onClick={onGenerateAiSticker} disabled={isGeneratingSticker}>
@@ -199,7 +165,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
               </SurfaceCard>
 
               <SurfaceCard className="p-ds-4">
-                <p className="mb-ds-3 text-ds-body font-semibold text-ink">기본 스티커</p>
+                <p className="mb-ds-3 text-ds-caption font-semibold text-ink">기본 스티커</p>
                 <div className="grid grid-cols-4 gap-ds-2">
                   {stickerPresets.map((preset) => (
                     <button key={preset.emoji} type="button" onClick={() => onAddSticker(preset.emoji, preset.bg)} className="grid h-12 place-items-center rounded-2xl text-ds-title" style={{ backgroundColor: preset.bg }}>
@@ -213,7 +179,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
 
           {activePanel === "media" ? (
             <SurfaceCard className="p-ds-4">
-              <p className="mb-ds-3 text-ds-body font-semibold text-ink">미디어 추가</p>
+              <p className="mb-ds-3 text-ds-caption font-semibold text-ink">미디어 추가</p>
               <Input value={gifQuery} onChange={(event) => onGifQueryChange(event.target.value)} placeholder="움짤 검색어 예: 고양이, 축하, 커피" />
               <div className="mt-ds-3 grid grid-cols-2 gap-ds-2">
                 <Button variant="outline" size="sm" onClick={onAddImage}>
@@ -256,7 +222,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
           {activePanel === "base" ? (
             <SurfaceCard className="p-ds-4">
               <div className="mb-ds-3 flex items-center justify-between">
-                <p className="text-ds-body font-semibold text-ink">선택 요소</p>
+                <p className="text-ds-caption font-semibold text-ink">선택 요소</p>
                 {selectedItem ? <span className="text-ds-caption text-cedar">{selectedItem.type}</span> : null}
               </div>
 
@@ -271,7 +237,7 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
                     <section className="rounded-2xl border border-line-pale bg-paper p-ds-3">
                       <div className="mb-ds-3 flex items-center justify-between">
                         <div>
-                          <p className="text-ds-body font-semibold text-ink">텍스트 편집</p>
+                          <p className="text-ds-caption font-semibold text-ink">텍스트 편집</p>
                           <p className="mt-ds-1 text-ds-caption text-cedar">입력하는 즉시 캔버스에 반영돼요.</p>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => onRemoveItem(selectedTextItem.id)}>
@@ -358,19 +324,6 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
               )}
             </SurfaceCard>
           ) : null}
-
-          <SurfaceCard className="p-ds-4">
-            <p className="mb-ds-3 text-ds-body font-semibold text-ink">줌</p>
-            <div className="flex items-center gap-ds-3">
-              <RoundIconButton type="button" onClick={() => onChangeZoom(Math.max(0.7, zoom - 0.1))}>
-                <Minus className="h-4 w-4" />
-              </RoundIconButton>
-              <div className="flex-1 text-center text-ds-body text-ink-warm">{Math.round(zoom * 100)}%</div>
-              <RoundIconButton type="button" onClick={() => onChangeZoom(Math.min(1.3, zoom + 0.1))}>
-                <Plus className="h-4 w-4" />
-              </RoundIconButton>
-            </div>
-          </SurfaceCard>
         </div>
 
         <Button className="mt-ds-6 h-12 w-full" onClick={onSave} disabled={isSaving}>
