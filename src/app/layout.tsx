@@ -1,6 +1,7 @@
 // 루트 레이아웃: 앱 전체 HTML 껍데기, 메타데이터, 글로벌 스타일을 정의한다
 import type { Metadata } from 'next';
 import './globals.css';
+import { AiFriendFab } from '@/features/chat/components/AiFriendFab';
 
 export const metadata: Metadata = {
   title: {
@@ -25,7 +26,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        {children}
+        <AiFriendFab />
+      </body>
     </html>
   );
 }
