@@ -264,6 +264,55 @@ export async function createSharedLetter(input: CreateSharedLetterInput): Promis
   return mapSharedLetterRow(data);
 }
 
+// 현재 로그인 사용자가 특정 일기(pageId)에 대해 만들어 둔 공유 편지 목록을 최신순으로 반환한다
+export async function loadSharedLettersForEntry(pageId: string): Promise<SharedLetterRecord[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    return [];
+  }
+
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return [];
+  }
+
+  const { data: entryRow, error: entryError } = await supabase
+    .from('diary_entries')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('entry_date', pageId)
+    .maybeSingle<Pick<DiaryEntryRow, 'id'>>();
+
+  if (entryError) throw entryError;
+  if (!entryRow) return [];
+
+  const { data, error } = await supabase
+    .from('shared_letters')
+    .select('*')
+    .eq('entry_id', entryRow.id)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .returns<SharedLetterRow[]>();
+
+  if (error) throw error;
+
+  return (data ?? []).map(mapSharedLetterRow);
+}
+
+// 공유 편지를 삭제해 링크를 즉시 무효화한다. 본인 소유 링크만 지운다.
+export async function deleteSharedLetter(shareId: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error(APP_MESSAGES.supabaseNotConfigured);
+  }
+
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    throw new Error(APP_MESSAGES.diarySaveRequiresAuth);
+  }
+
+  const { error } = await supabase.from('shared_letters').delete().eq('id', shareId).eq('user_id', userId);
+  if (error) throw error;
+}
+
 // shareToken으로 공개 공유 편지를 DB에서 조회해 반환한다
 export async function loadSharedLetter(shareToken: string): Promise<SharedLetterRecord | null> {
   if (!isSupabaseConfigured || !supabase) {

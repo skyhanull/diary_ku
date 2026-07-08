@@ -16,7 +16,7 @@ import { fetchWeatherForCurrentPosition } from '@/features/home/lib/home-weather
 import type { DiaryEntrySummary, HomeWeather, MoodDistributionItem, ScheduleItem, WeatherIconName } from '@/features/home/types/home.types';
 import { APP_MESSAGES, getUserFacingErrorMessage, isAuthRequiredMessage } from '@/lib/messages';
 import { moodMeta } from '@/lib/mood';
-import { formatSelectedDate } from '@/lib/date';
+import { formatSelectedDate, getSeoulToday } from '@/lib/date';
 
 // 해당 월 일기 목록에서 감정별 개수와 비율을 계산해 분포 배열을 반환한다
 function buildMonthlyMoodDistribution(entries: DiaryEntrySummary[]): MoodDistributionItem[] {
@@ -50,7 +50,7 @@ function getWeatherIcon(icon: WeatherIconName) {
 
 // 홈 페이지의 최상위 컨테이너로 캘린더와 인사이트 패널을 조합하고 데이터 상태를 관리한다
 export function HomeDashboard() {
-  const [today] = useState(() => new Date());
+  const [today] = useState(() => getSeoulToday());
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(today);
   const [entries, setEntries] = useState<DiaryEntrySummary[]>([]);

@@ -8,8 +8,10 @@ import type { Editor as TiptapEditor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
+import Placeholder from '@tiptap/extension-placeholder';
 
 import type { CreateEditorItemInput, EditorItem, EditorTool } from '@/features/editor/types/editor.types';
+import { DEFAULT_EDITOR_BODY_TEXT } from '@/features/editor/lib/editor-body';
 
 const MARGIN_LEFT = 24;
 const TOP_PADDING = 24;
@@ -220,6 +222,9 @@ export function EditorCanvasSingle({
       TaskList,
       TaskItem.configure({
         nested: true
+      }),
+      Placeholder.configure({
+        placeholder: DEFAULT_EDITOR_BODY_TEXT
       })
     ],
     content: diaryText || '<p></p>',

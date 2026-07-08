@@ -14,6 +14,7 @@
     "@anthropic-ai/sdk": "^0.91.1",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.49.1",
+    "@tiptap/extension-placeholder": "^3.27.2",
     "@tiptap/extension-task-item": "^3.19.0",
     "@tiptap/extension-task-list": "^3.19.0",
     "@tiptap/react": "^3.19.0",

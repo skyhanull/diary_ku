@@ -100,7 +100,13 @@ export function AppHeader({ activeItem = "기록", actions, showSearch = true }:
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="검색 준비 중"
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  const keyword = searchQuery.trim();
+                  if (!keyword) return;
+                  router.push(`/archive?q=${encodeURIComponent(keyword)}`);
+                }}
+                placeholder="일기 검색"
                 className="h-auto w-40 border-0 bg-transparent px-0 py-0 text-ds-body shadow-none focus-visible:ring-0"
                 aria-label="전체 검색"
               />

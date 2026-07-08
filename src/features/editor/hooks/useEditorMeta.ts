@@ -5,7 +5,6 @@ import { startTransition } from "react";
 import {
   createEditorBodyFromHtml,
   createEditorBodyFromText,
-  DEFAULT_EDITOR_BODY_TEXT,
   extractEditorBodyText,
   type EditorBodyDocument,
 } from "@/features/editor/lib/editor-body";
@@ -39,7 +38,8 @@ function makeDefaultSnapshot(bodyHtml: string): SavedEditorSnapshot {
 
 // 제목·태그·감정·본문 상태와 dirty 감지·스냅샷 관리를 제공하는 훅
 export function useEditorMeta() {
-  const defaultBody = createEditorBodyFromText(DEFAULT_EDITOR_BODY_TEXT);
+  // 본문은 빈 문서로 시작한다. 안내 문구는 실제 텍스트가 아니라 에디터 플레이스홀더로만 표시한다.
+  const defaultBody = createEditorBodyFromText("");
 
   const [activeMoodIndex, setActiveMoodIndex] = useState(0);
   const [entryTitle, setEntryTitle] = useState("");
@@ -77,7 +77,7 @@ export function useEditorMeta() {
 
   const syncFromEntry = useCallback((entry: DiaryEntryRecord | null, tags: string[]) => {
     if (!entry) {
-      const emptyBody = createEditorBodyFromText(DEFAULT_EDITOR_BODY_TEXT);
+      const emptyBody = createEditorBodyFromText("");
       setActiveMoodIndex(0);
       setEntryTitle("");
       setEntryTags([...defaultTags]);

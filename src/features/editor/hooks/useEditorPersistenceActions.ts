@@ -3,12 +3,17 @@
 import { useCallback, useRef, useState } from "react";
 
 import { createEditorSaveFlowController } from "@/features/editor/lib/editor-save-flow";
-import { createSharedLetter, saveEditorSession } from "@/features/editor/lib/editor-persistence";
+import {
+  createSharedLetter,
+  deleteSharedLetter,
+  loadSharedLettersForEntry,
+  saveEditorSession,
+} from "@/features/editor/lib/editor-persistence";
 import { ApiError, authorizedFetch } from "@/lib/api-client";
 import { htmlToPlainText } from "@/lib/html";
 import { APP_MESSAGES, getUserFacingErrorMessage, isAuthRequiredMessage } from "@/lib/messages";
 import { supabase } from "@/lib/supabase";
-import type { EditorItem, SharedLetterTheme } from "@/features/editor/types/editor.types";
+import type { EditorItem, SharedLetterRecord, SharedLetterTheme } from "@/features/editor/types/editor.types";
 
 // 훅에 주입할 에디터 현재 상태와 콜백을 정의하는 입력 타입
 interface UseEditorPersistenceActionsInput {
@@ -48,6 +53,9 @@ export function useEditorPersistenceActions({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "autosaving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [sharedLetterUrl, setSharedLetterUrl] = useState<string | null>(null);
+  const [existingShares, setExistingShares] = useState<SharedLetterRecord[]>([]);
+  const [isLoadingShares, setIsLoadingShares] = useState(false);
+  const [deletingShareId, setDeletingShareId] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -231,6 +239,7 @@ export function useEditorPersistenceActions({
         setSaveState("saved");
         const nextUrl = `${window.location.origin}/letter/${sharedLetter.shareToken}`;
         setSharedLetterUrl(nextUrl);
+        setExistingShares((prev) => [sharedLetter, ...prev.filter((share) => share.id !== sharedLetter.id)]);
         setShareMessage("편지 링크를 만들었어요. 복사하거나 바로 열어볼 수 있어요.");
       } catch (error) {
         const message = getUserFacingErrorMessage(error, "공유 링크 생성 중 문제가 발생했어요.");
@@ -243,6 +252,43 @@ export function useEditorPersistenceActions({
       }
     },
     [bodyHtml, items, mood, onPersistSuccess, onResetDirty, pageId, tags, title]
+  );
+
+  // 모달을 열 때 현재 일기에 대해 이미 만들어 둔 공유 링크 목록을 불러온다.
+  const refreshShares = useCallback(async () => {
+    setIsLoadingShares(true);
+    try {
+      const shares = await loadSharedLettersForEntry(pageId);
+      setExistingShares(shares);
+    } catch {
+      // 목록 로드 실패는 조용히 넘긴다 — 링크 생성 자체를 막지 않는다.
+    } finally {
+      setIsLoadingShares(false);
+    }
+  }, [pageId]);
+
+  // 공유 링크를 해제(삭제)해 즉시 무효화한다.
+  const handleDeleteShare = useCallback(
+    async (shareId: string) => {
+      setDeletingShareId(shareId);
+      setSaveError(null);
+      setShareMessage(null);
+
+      try {
+        await deleteSharedLetter(shareId);
+        setExistingShares((prev) => prev.filter((share) => share.id !== shareId));
+        setShareMessage("공유 링크를 해제했어요. 이 링크로는 더 이상 편지를 볼 수 없어요.");
+      } catch (error) {
+        const message = getUserFacingErrorMessage(error, "공유 링크 해제 중 문제가 발생했어요.");
+        setSaveError(message);
+        if (isAuthRequiredMessage(message)) {
+          window.alert(APP_MESSAGES.authRequiredAlert);
+        }
+      } finally {
+        setDeletingShareId(null);
+      }
+    },
+    []
   );
 
   const handleCopyShareLink = useCallback(async () => {
@@ -265,6 +311,9 @@ export function useEditorPersistenceActions({
     saveState,
     lastSavedAt,
     sharedLetterUrl,
+    existingShares,
+    isLoadingShares,
+    deletingShareId,
     shareMessage,
     saveMessage,
     saveError,
@@ -277,5 +326,7 @@ export function useEditorPersistenceActions({
     handleFlushPendingSave,
     handleCreateShare,
     handleCopyShareLink,
+    refreshShares,
+    handleDeleteShare,
   };
 }

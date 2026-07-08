@@ -75,9 +75,11 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
 
   const {
     isSaving, isBodySaving, isAutosaving, isCreatingShare, isSaveSlow,
-    saveState, sharedLetterUrl, shareMessage, saveMessage, saveError,
+    saveState, sharedLetterUrl, existingShares, isLoadingShares, deletingShareId,
+    shareMessage, saveMessage, saveError,
     setSaveMessage, setSaveError, handleSave, handleAutosave,
     handleFlushPendingSave, handleCreateShare, handleCopyShareLink,
+    refreshShares, handleDeleteShare,
   } = useEditorPersistenceActions({
     pageId,
     title: entryTitle,
@@ -91,6 +93,11 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
       lastAutosaveSignatureRef.current = currentAutosaveSignature;
     },
   });
+
+  // 공유 모달을 열 때 이 일기로 만들어 둔 링크 목록을 최신 상태로 불러온다.
+  useEffect(() => {
+    if (isShareModalOpen) void refreshShares();
+  }, [isShareModalOpen, refreshShares]);
 
   const addEditorItem = (input: CreateEditorItemInput) => addItem({ ...input, pageSide: "single" });
 
@@ -428,6 +435,9 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           recipientName={shareRecipientName}
           theme={shareTheme}
           sharedLetterUrl={sharedLetterUrl}
+          existingShares={existingShares}
+          isLoadingShares={isLoadingShares}
+          deletingShareId={deletingShareId}
           isCreatingShare={isCreatingShare}
           isSaveLocked={isPersistBusy}
           shareMessage={shareMessage}
@@ -436,6 +446,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           onChangeTheme={setShareTheme}
           onCreateShare={() => void handleCreateShare({ recipientName: shareRecipientName, theme: shareTheme })}
           onCopyShareLink={() => void handleCopyShareLink()}
+          onDeleteShare={(shareId) => void handleDeleteShare(shareId)}
           onClose={() => setIsShareModalOpen(false)}
         />
       ) : null}
