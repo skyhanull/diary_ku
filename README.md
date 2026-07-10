@@ -2,17 +2,10 @@
 
 > 감정을 기록하고, AI가 과거 일기를 근거로 함께 회고해주는 디지털 다이어리 웹앱
 
-![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-Postgres_+_pgvector-3ECF8E?logo=supabase&logoColor=white)
-![RAG](https://img.shields.io/badge/AI-RAG_chat-8C6A5D)
-
-**🔗 라이브 데모: <!-- TODO: 배포 URL 입력 --> https://your-app.vercel.app**
+**🔗 라이브 데모 · <!-- TODO: 배포 URL 입력 --> https://your-app.vercel.app**
 회원가입 없이 홈 화면의 **"테스트 계정으로 시작"** 버튼 한 번으로 모든 기능을 둘러볼 수 있습니다.
 
-감정 기록, 캘린더 회고, AI 대화, 편지형 공유를 하나의 흐름으로 연결한 디지털 다이어리 웹앱입니다. 단순 CRUD가 아니라 `홈 캘린더 → 캔버스 에디터 → 저장/복원 → RAG 채팅 → 편지형 공유 → 보관함 검색`까지 이어지는 사용자 경험과 상태 관리, 검색 품질, AI 연동을 함께 설계한 프로젝트입니다.
+`홈 캘린더 → 캔버스 에디터 → 저장/복원 → RAG 채팅 → 편지형 공유 → 보관함 검색`까지 하나의 흐름으로 이어지는, 단독 설계·구현 프로젝트입니다.
 
 ## 스크린샷
 
@@ -20,51 +13,70 @@
 | :---: | :---: |
 | ![홈 캘린더](docs/screens/home.png) | ![캔버스 에디터](docs/screens/editor.png) |
 
-## Resume Snapshot
-- 감정 기반 다이어리 SaaS를 Next.js 15, React 19, TypeScript, Supabase로 설계·구현했습니다.
-- Tiptap + Pointer Events 기반 자유 배치형 에디터를 구현해 텍스트·스티커·이미지·GIF 요소 편집 경험을 구성했습니다.
-- Voyage AI 임베딩, pgvector 검색, Groq LLM 스트리밍 응답을 연결해 과거 일기 회고형 RAG 채팅을 구축했습니다.
-- 공유 시점 스냅샷 저장 구조를 도입해 원본 수정 이후에도 편지형 공유 링크의 일관성을 보장했습니다.
-- 제목·태그·감정·본문·날짜를 분리한 가중치 검색 랭킹으로 보관함 탐색 경험을 개선했습니다.
+## 핵심 성과
 
-## 핵심 기능
+- **다이어리 UX 전 구간을 단독 설계·구현** — 자유 배치형 캔버스 에디터부터 RAG 채팅·편지형 공유·검색까지 (Next.js 15 · React 19 · TypeScript · Supabase, 76개 모듈 / 약 9,000줄).
+- **과거 일기 근거 회고형 RAG 채팅 구축** — Voyage AI 임베딩 + pgvector 유사도 검색 + Groq(Llama 3.3-70B) 스트리밍 응답을, 저장 UX를 막지 않는 best-effort 파이프라인으로 연결.
+- **공유 시점 스냅샷 발행 구조 설계** — 원본을 나중에 수정해도 이미 보낸 편지 링크는 발행 당시 상태를 그대로 유지하도록 읽기 전용 공유를 분리.
+
+## 기술 스택
+
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres_+_pgvector-3ECF8E?logo=supabase&logoColor=white)
+![RAG](https://img.shields.io/badge/AI-RAG_chat-8C6A5D)
+
+| 영역 | 사용 기술 |
+| --- | --- |
+| Frontend | Next.js 15 App Router, React 19, TypeScript |
+| Styling | Tailwind CSS v4, custom UI primitives |
+| Editor | Tiptap, Pointer Events 기반 캔버스 아이템 조작 |
+| Backend | Supabase Auth, Postgres, pgvector |
+| AI | Voyage AI(임베딩), Groq / Llama 3.3-70B(채팅), Cloudflare Workers AI(AI 스티커) |
+| External | GIPHY API |
+| Infra | GitHub Actions, Vercel CLI |
+
+---
+
+<details>
+<summary><strong>📋 상세 기능 · 아키텍처 · 기술적 문제 해결</strong></summary>
+
+### 핵심 기능
 - 월간 캘린더 기반 일기 진입: 홈에서 날짜별 기록 상태와 감정 흐름을 확인하고 특정 날짜 에디터로 이동합니다.
 - 다이어리 에디터: 본문 작성, 텍스트 박스, 스티커, 이미지, GIF, AI 스티커를 캔버스에 배치할 수 있습니다.
 - 캔버스 인터랙션: 꾸미기 요소 선택, 이동, 크기 조절, 줌 좌표 보정, 캔버스 경계 제한을 처리합니다.
 - Supabase 저장/복원: 일기 본문과 꾸미기 요소를 사용자/날짜 기준으로 저장하고 다시 불러옵니다.
-- AI 일기 친구 (RAG 채팅): 저장 시 Voyage AI로 임베딩을 생성해 Supabase pgvector에 저장합니다. 에디터에서 채팅 패널을 열면 질문과 유사한 과거 일기를 검색해 컨텍스트로 주입하고, Groq(Llama 3.3-70b)으로 스트리밍 응답을 생성합니다. 대화 이력은 Supabase에 영속 저장됩니다.
+- AI 일기 친구 (RAG 채팅): 저장 시 Voyage AI로 임베딩을 생성해 Supabase pgvector에 저장합니다. 에디터에서 채팅 패널을 열면 질문과 유사한 과거 일기를 검색해 컨텍스트로 주입하고, Groq(Llama 3.3-70B)으로 스트리밍 응답을 생성합니다. 대화 이력은 Supabase에 영속 저장됩니다.
 - 편지형 공유: 공유 시점의 일기 스냅샷을 별도로 저장하고 `/letter/[shareToken]` 링크로 읽기 전용 화면을 제공합니다.
 - 보관함 검색: 저장된 일기를 카드형 UI로 모아 보고, 제목·태그·감정·본문·날짜 기반 검색 랭킹과 URL query 동기화 필터를 제공합니다.
 - 수동 배포 파이프라인: GitHub Actions에서 `Run workflow`를 눌렀을 때만 Vercel Production 배포가 실행됩니다.
 
-## 기술 스택
-- Frontend: Next.js 15 App Router, React 19, TypeScript
-- Styling: Tailwind CSS v4, custom UI primitives
-- Editor: Tiptap, Pointer Events 기반 캔버스 아이템 조작
-- Backend: Supabase Auth, Postgres, pgvector
-- AI: Voyage AI (임베딩), Groq / Llama 3.3-70b (채팅), Cloudflare Workers AI (AI 스티커)
-- External: GIPHY API
-- Infra: GitHub Actions, Vercel CLI
-
-## Architecture Highlights
+### Architecture Highlights
 - App Router 기반 화면 구조와 feature-first 폴더링으로 홈, 에디터, 보관함, 채팅, 공유 기능을 분리했습니다.
 - `useEditorState`, `useEditorPersistenceActions` 등 커스텀 훅으로 복잡한 편집 상태와 저장 흐름을 UI 렌더링 로직에서 분리했습니다.
 - 홈/보관함에서 공통으로 쓰는 `DiaryEntrySummary` 뷰모델을 두어 DB row를 화면 친화적인 읽기 모델로 변환했습니다.
 - 저장 성공 이후에만 임베딩을 비동기 후처리하는 best-effort 파이프라인으로 핵심 저장 UX와 AI 품질 의존성을 분리했습니다.
 - `vitest`로 저장 흐름, 본문 변환, 보관함 검색, 캘린더 계산 로직을 단위 테스트했습니다.
 
-## 기술적 문제 해결
-- 확대/축소 상태에서 캔버스 포인터 좌표가 실제 요소 위치와 어긋나는 문제를 해결하기 위해 Pointer Events 기반 드래그·리사이즈·회전 로직을 직접 구현했습니다. 포인터 이동량을 현재 줌 배율로 보정하고, `clamp` 처리를 적용해 요소가 캔버스 경계 밖으로 벗어나지 않도록 제한했습니다.
-- 에디터의 요소 목록, 선택 상태, 수정 여부(dirty)가 여러 컴포넌트에 분산되면 상태 변경 흐름을 추적하기 어려워지는 문제가 있어 `useEditorState` 커스텀 훅으로 핵심 상태와 변경 액션을 분리했습니다. 화면 컴포넌트는 렌더링과 입력 처리에 집중하도록 구조를 나눴습니다.
-- 공유 링크가 원본 일기 데이터를 그대로 참조하면 이후 편집 내용이 이미 공유된 화면에 반영될 수 있는 문제가 있어, 공유 생성 시점의 제목·본문·배경·꾸미기 요소를 스냅샷으로 별도 저장했습니다. 이를 통해 원본 일기를 수정해도 공유 화면은 생성 당시 상태를 유지하도록 설계했습니다.
-- 한국어 프롬프트가 이미지 생성 모델에서 부정확하게 처리되거나 같은 검색어의 생성 결과가 유사해지는 문제를 개선하기 위해 Cloudflare Workers AI 기반 생성 파이프라인에 번역 처리와 랜덤 변주 프롬프트를 적용했습니다. 생성된 이미지는 에디터 캔버스에 스티커 요소로 바로 배치할 수 있도록 연결했습니다.
-- 보관함 검색에서 본문에 우연히 단어가 포함된 기록이 과도하게 노출되는 문제를 줄이기 위해 제목·태그·감정·본문·날짜를 검색 인덱스로 분리하고 필드별 가중치 기반 랭킹을 적용했습니다. 검색어와 필터 상태는 URL query와 동기화해 새로고침 후에도 탐색 상태가 유지되도록 했습니다.
-- RAG 채팅에서 같은 저장 이벤트가 여러 번 임베딩 API를 호출하는 것을 막기 위해, 수동 저장과 자동 저장 모두 저장 성공 후에만 임베딩을 트리거하도록 `persistSession`의 반환값으로 흐름을 제어했습니다. 임베딩은 채팅 품질에 영향을 주지만 일기 저장 자체를 막아서는 안 되므로 best-effort로 처리하고 실패 시 1회 재시도합니다.
+### 기술적 문제 해결
+- **줌 상태 좌표 보정** — 확대/축소 상태에서 캔버스 포인터 좌표가 실제 요소 위치와 어긋나는 문제를 해결하기 위해 Pointer Events 기반 드래그·리사이즈·회전 로직을 직접 구현했습니다. 포인터 이동량을 현재 줌 배율로 보정하고, `clamp` 처리를 적용해 요소가 캔버스 경계 밖으로 벗어나지 않도록 제한했습니다.
+- **편집 상태 분리** — 에디터의 요소 목록, 선택 상태, 수정 여부(dirty)가 여러 컴포넌트에 분산되면 상태 변경 흐름을 추적하기 어려워지는 문제가 있어 `useEditorState` 커스텀 훅으로 핵심 상태와 변경 액션을 분리했습니다. 화면 컴포넌트는 렌더링과 입력 처리에 집중하도록 구조를 나눴습니다.
+- **공유 스냅샷 발행** — 공유 링크가 원본 일기 데이터를 그대로 참조하면 이후 편집 내용이 이미 공유된 화면에 반영될 수 있는 문제가 있어, 공유 생성 시점의 제목·본문·배경·꾸미기 요소를 스냅샷으로 별도 저장했습니다. 이를 통해 원본 일기를 수정해도 공유 화면은 생성 당시 상태를 유지하도록 설계했습니다.
+- **AI 스티커 생성 품질** — 한국어 프롬프트가 이미지 생성 모델에서 부정확하게 처리되거나 같은 검색어의 생성 결과가 유사해지는 문제를 개선하기 위해 Cloudflare Workers AI 기반 생성 파이프라인에 번역 처리와 랜덤 변주 프롬프트를 적용했습니다. 생성된 이미지는 에디터 캔버스에 스티커 요소로 바로 배치할 수 있도록 연결했습니다.
+- **검색 랭킹 품질** — 보관함 검색에서 본문에 우연히 단어가 포함된 기록이 과도하게 노출되는 문제를 줄이기 위해 제목·태그·감정·본문·날짜를 검색 인덱스로 분리하고 필드별 가중치 기반 랭킹을 적용했습니다. 검색어와 필터 상태는 URL query와 동기화해 새로고침 후에도 탐색 상태가 유지되도록 했습니다.
+- **임베딩 중복 호출 제어** — RAG 채팅에서 같은 저장 이벤트가 여러 번 임베딩 API를 호출하는 것을 막기 위해, 수동 저장과 자동 저장 모두 저장 성공 후에만 임베딩을 트리거하도록 `persistSession`의 반환값으로 흐름을 제어했습니다. 임베딩은 채팅 품질에 영향을 주지만 일기 저장 자체를 막아서는 안 되므로 best-effort로 처리하고 실패 시 1회 재시도합니다.
 
-## MVP 범위
+### MVP 범위
 현재 공개 데모의 핵심 범위는 홈 캘린더, 에디터, 저장, 편지형 공유, 보관함 검색입니다. `stats`는 후속 확장 기능으로 분리했고, 헤더 네비게이션에서는 노출하지 않습니다.
 
-## 실행 방법
+</details>
+
+<details>
+<summary><strong>⚙️ 실행 · 품질 · 배포</strong></summary>
+
+### 실행 방법
 ```bash
 cp .env.example .env.local
 npm install
@@ -93,7 +105,7 @@ NEXT_PUBLIC_TEST_ACCOUNT_PASSWORD=
 
 로그인 화면은 기본적으로 테스트 계정이 입력된 상태로 열립니다. 공개 데모 계정을 바꾸려면 Supabase Auth에 해당 계정을 만든 뒤 `NEXT_PUBLIC_TEST_ACCOUNT_EMAIL`, `NEXT_PUBLIC_TEST_ACCOUNT_PASSWORD`를 설정합니다.
 
-## 품질 확인
+### 품질 확인
 ```bash
 npm run lint
 npm run typecheck
@@ -102,7 +114,7 @@ npm run build
 
 현재 일부 동적 이미지 렌더링에는 사용자 업로드, data URL, GIF 미리보기 특성상 `<img>`를 사용하고 있어 `@next/next/no-img-element` warning이 남을 수 있습니다. Production build는 통과하도록 관리합니다.
 
-## 배포
+### 배포
 GitHub Actions의 `CD - Vercel` workflow를 수동 실행합니다.
 
 1. GitHub 저장소에서 `Actions` 탭으로 이동합니다.
@@ -116,6 +128,8 @@ VERCEL_ORG_ID
 VERCEL_PROJECT_ID
 ```
 
+</details>
+
 ## 문서
 - 제품 요구사항: `docs/PRD.md`
 - 아키텍처 가이드: `docs/ARCHITECTURE.md`
@@ -125,4 +139,4 @@ VERCEL_PROJECT_ID
 - 공유 편지 설계: `docs/EDITOR_SHARE_LETTER_PLAN.md`
 - 공유 편지 SQL: `docs/EDITOR_SHARE_LETTER_SQL.md`
 - 보관함 검색 알고리즘: `docs/ARCHIVE_SEARCH_ALGORITHM.md`
-
+- 향후 확장 계획: `docs/FUTURE_ENHANCEMENTS.md`
