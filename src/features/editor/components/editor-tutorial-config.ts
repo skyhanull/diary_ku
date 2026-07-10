@@ -15,7 +15,7 @@ export const tutorialSteps: TutorialStep[] = [
   {
     id: "sidebar",
     title: "왼쪽 도구",
-    description: "여기서 포인터, 텍스트, 스티커, 사진/움짤 패널을 열 수 있어요. 이제 클릭만으로 바로 생성되진 않고, 오른쪽 패널을 여는 역할만 합니다.",
+    description: "여기서 포인터, 텍스트, 사진/움짤 패널을 열 수 있어요. 이제 클릭만으로 바로 생성되진 않고, 오른쪽 패널을 여는 역할만 합니다.",
   },
   {
     id: "canvas",

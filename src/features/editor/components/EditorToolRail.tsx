@@ -1,7 +1,8 @@
 "use client";
 // 에디터 좌측 툴바: 선택·텍스트·스티커·이미지 도구를 선택하는 아이콘 버튼 모음
 import { forwardRef } from "react";
-import { ChevronLeft, ImagePlus, MousePointer2, Sticker, Type } from "lucide-react";
+// 스티커 기능 임시 비활성화: Sticker 아이콘 import를 함께 주석처리한다
+import { ChevronLeft, ImagePlus, MousePointer2, /* Sticker, */ Type } from "lucide-react";
 
 import { ToolIconButton } from "@/components/ui/tool-icon-button";
 import type { EditorSidePanel, EditorTool } from "@/features/editor/types/editor.types";
@@ -26,9 +27,11 @@ export const EditorToolRail = forwardRef<HTMLElement, EditorToolRailProps>(({ ac
       <ToolIconButton onClick={() => openPanel("text")} active={activePanel === "text"}>
         <Type className="h-5 w-5" />
       </ToolIconButton>
+      {/* 스티커 기능 임시 비활성화
       <ToolIconButton onClick={() => openPanel("sticker")} active={activePanel === "sticker"}>
         <Sticker className="h-5 w-5" />
       </ToolIconButton>
+      */}
       <ToolIconButton onClick={() => openPanel("media")} active={activePanel === "media"}>
         <ImagePlus className="h-5 w-5" />
       </ToolIconButton>
