@@ -9,21 +9,14 @@ import { NoticeBox } from "@/components/ui/notice-box";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { formatDiaryDate } from "@/lib/date";
 import type { SharedLetterRecord, SharedLetterTheme } from "@/features/editor/types/editor.types";
+import { LETTER_THEMES, LETTER_THEME_ORDER, getLetterTheme } from "@/features/share/lib/letter-theme";
 
-const shareThemeOptions: Array<{ value: SharedLetterTheme; label: string; description: string }> = [
-  { value: "paper", label: "종이 편지", description: "가장 기본적인 따뜻한 편지 무드예요." },
-  { value: "cream", label: "크림 편지", description: "부드러운 크림빛 편지 무드예요." },
-  { value: "midnight", label: "밤 편지", description: "저녁 분위기의 깊은 그라데이션이에요." },
-];
-
-const themeLabelMap: Record<SharedLetterTheme, string> = {
-  paper: "종이 편지",
-  cream: "크림 편지",
-  midnight: "밤 편지",
-};
+const COVER_MESSAGE_MAX = 140;
+const shareThemeOptions = LETTER_THEME_ORDER.map((value) => LETTER_THEMES[value]);
 
 interface EditorShareModalProps {
   recipientName: string;
+  coverMessage: string;
   theme: SharedLetterTheme;
   sharedLetterUrl: string | null;
   existingShares: SharedLetterRecord[];
@@ -34,6 +27,7 @@ interface EditorShareModalProps {
   shareMessage: string | null;
   saveError: string | null;
   onChangeRecipientName: (value: string) => void;
+  onChangeCoverMessage: (value: string) => void;
   onChangeTheme: (theme: SharedLetterTheme) => void;
   onCreateShare: () => void;
   onCopyShareLink: () => void;
@@ -49,6 +43,7 @@ function buildShareUrl(shareToken: string) {
 
 export function EditorShareModal({
   recipientName,
+  coverMessage,
   theme,
   sharedLetterUrl,
   existingShares,
@@ -59,6 +54,7 @@ export function EditorShareModal({
   shareMessage,
   saveError,
   onChangeRecipientName,
+  onChangeCoverMessage,
   onChangeTheme,
   onCreateShare,
   onCopyShareLink,
@@ -100,6 +96,20 @@ export function EditorShareModal({
                 <Input value={recipientName} onChange={(event) => onChangeRecipientName(event.target.value)} placeholder="예: 미래의 나, 윤경에게" className="h-11 rounded-2xl border-line bg-paper" />
               </section>
 
+              <section className="rounded-2xl border border-line-soft bg-white/80 p-ds-4">
+                <div className="mb-ds-2 flex items-center justify-between">
+                  <label className="block text-ds-body font-semibold text-ink">봉투 커버 메시지</label>
+                  <span className="text-ds-micro text-cedar">{coverMessage.length}/{COVER_MESSAGE_MAX}</span>
+                </div>
+                <textarea
+                  value={coverMessage}
+                  onChange={(event) => onChangeCoverMessage(event.target.value.slice(0, COVER_MESSAGE_MAX))}
+                  placeholder="봉투를 열기 전 보여줄 짧은 인사말을 적어보세요."
+                  rows={3}
+                  className="w-full resize-none rounded-2xl border border-line bg-paper px-ds-3 py-ds-3 text-ds-body text-ink placeholder:text-cedar/70 focus:outline-none focus:ring-2 focus:ring-cedar/30"
+                />
+              </section>
+
               <Button className="h-11 w-full" onClick={onCreateShare} disabled={isCreatingShare || isSaveLocked}>
                 <Send className="mr-ds-2 h-4 w-4" />
                 {isCreatingShare ? "링크 생성 중..." : isSaveLocked ? "저장 처리 중..." : "편지지 링크 만들기"}
@@ -112,10 +122,10 @@ export function EditorShareModal({
                 <div className="grid gap-ds-2 sm:grid-cols-3">
                   {shareThemeOptions.map((option) => (
                     <button
-                      key={option.value}
+                      key={option.key}
                       type="button"
-                      onClick={() => onChangeTheme(option.value)}
-                      className={`rounded-2xl border px-ds-4 py-ds-3 text-left transition ${theme === option.value ? "border-cedar bg-cedar-soft" : "border-line bg-paper"}`}
+                      onClick={() => onChangeTheme(option.key)}
+                      className={`rounded-2xl border px-ds-4 py-ds-3 text-left transition ${theme === option.key ? "border-cedar bg-cedar-soft" : "border-line bg-paper"}`}
                     >
                       <p className="text-ds-body font-semibold text-ink">{option.label}</p>
                       <p className="mt-ds-1 text-ds-caption text-cedar">{option.description}</p>
@@ -172,7 +182,7 @@ export function EditorShareModal({
                         <div className="min-w-0">
                           <p className="truncate text-ds-body font-semibold text-ink">
                             {share.recipientName ? `To. ${share.recipientName}` : "받는 사람 미지정"}
-                            <span className="ml-ds-2 rounded-full bg-oatmeal px-ds-2 py-0.5 text-ds-micro font-medium text-cedar">{themeLabelMap[share.theme]}</span>
+                            <span className="ml-ds-2 rounded-full bg-oatmeal px-ds-2 py-0.5 text-ds-micro font-medium text-cedar">{getLetterTheme(share.theme).label}</span>
                           </p>
                           <p className="mt-ds-1 truncate text-ds-caption text-cedar" title={url}>
                             {formatDiaryDate(share.snapshot.entryDate)} · {url}

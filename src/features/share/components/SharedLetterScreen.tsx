@@ -1,7 +1,7 @@
 'use client';
 // 공유 편지 화면: shareToken으로 공유된 일기를 봉투 열기 연출과 함께 읽기 전용 편지로 렌더링한다
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Mail } from 'lucide-react';
+import { Copy, Download, Mail, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { NoticeBox } from '@/components/ui/notice-box';
@@ -9,34 +9,13 @@ import { SurfaceCard } from '@/components/ui/surface-card';
 import { extractEditorBodyText } from '@/features/editor/lib/editor-body';
 import { loadSharedLetter } from '@/features/editor/lib/editor-persistence';
 import type { SharedLetterRecord } from '@/features/editor/types/editor.types';
+import { getLetterTheme, type LetterThemeVisual } from '@/features/share/lib/letter-theme';
 import { LetterEnvelopeStage } from './LetterEnvelopeStage';
 
 // SharedLetterScreen 컴포넌트에 전달되는 공유 토큰 prop 타입이다
 interface SharedLetterScreenProps {
   shareToken: string;
 }
-
-// 편지 테마별 배경·봉투·종이 Tailwind 클래스와 강조색을 모아둔 상수다
-const paperThemeClasses = {
-  paper: {
-    shell: 'from-[#f8efe6] via-[#fffaf5] to-[#efe2d6]',
-    envelope: 'from-[#f3e3d2] via-[#f9ecdf] to-[#e8d4c2]',
-    flap: 'from-[#ead7c6] to-[#f7ebde]',
-    seal: '#b98c6d'
-  },
-  cream: {
-    shell: 'from-[#f5eedc] via-[#fff9ec] to-[#e7dcbc]',
-    envelope: 'from-[#efe4c9] via-[#faf4df] to-[#decfa8]',
-    flap: 'from-[#e8dbb8] to-[#f8f1d8]',
-    seal: '#b39a52'
-  },
-  midnight: {
-    shell: 'from-[#1f2030] via-[#2c2438] to-[#49354e]',
-    envelope: 'from-[#403149] via-[#5a4260] to-[#7a5f78]',
-    flap: 'from-[#674f6d] to-[#8d6f86]',
-    seal: '#e6c79a'
-  }
-} as const;
 
 // 봉투가 열리기 전 보여주는 닫힌 봉투 화면. 클릭하면 봉투 뚜껑이 열리는 연출을 시작한다.
 function ClosedEnvelope({
@@ -46,12 +25,10 @@ function ClosedEnvelope({
   onOpen
 }: {
   letter: SharedLetterRecord;
-  theme: (typeof paperThemeClasses)[keyof typeof paperThemeClasses];
+  theme: LetterThemeVisual;
   isOpening: boolean;
   onOpen: () => void;
 }) {
-  const isMidnight = letter.theme === 'midnight';
-
   return (
     <div className={`mx-auto max-w-[520px] transition-opacity duration-500 ${isOpening ? 'opacity-0' : 'opacity-100'}`}>
       <div className="relative aspect-[3/2] [perspective:1400px]">
@@ -84,9 +61,15 @@ function ClosedEnvelope({
 
       <div className="mt-8 text-center">
         {letter.recipientName ? (
-          <p className={`text-sm ${isMidnight ? 'text-[#e7d6c2]' : 'text-[#6f5c45]'}`}>To. {letter.recipientName}</p>
+          <p className={`text-sm ${theme.ink}`}>To. {letter.recipientName}</p>
         ) : null}
-        <p className={`mt-1 text-xs ${isMidnight ? 'text-[#c4b3c8]' : 'text-[#9b8170]'}`}>{letter.snapshot.entryDate}</p>
+        {/* 커버 메시지: 봉투를 열기 전, 보내는 사람이 남긴 짧은 인사말 */}
+        {letter.coverMessage ? (
+          <p className={`mx-auto mt-3 max-w-[420px] whitespace-pre-wrap text-[15px] leading-relaxed ${theme.ink}`}>
+            {letter.coverMessage}
+          </p>
+        ) : null}
+        <p className={`mt-2 text-xs ${theme.inkSoft}`}>{letter.snapshot.entryDate}</p>
         <Button className="mt-5 h-11 px-8" onClick={onOpen} disabled={isOpening}>
           <Mail className="mr-2 h-4 w-4" />
           편지 열어보기
@@ -101,7 +84,8 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
   const [letter, setLetter] = useState<SharedLetterRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+  const [isSavingImage, setIsSavingImage] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
   const [isOpened, setIsOpened] = useState(false);
 
@@ -140,13 +124,18 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
   }, [shareToken]);
 
   const bodyText = useMemo(() => extractEditorBodyText(letter?.snapshot.bodyHtml ?? null), [letter]);
-  const theme = letter ? paperThemeClasses[letter.theme] : paperThemeClasses.paper;
+  const theme = getLetterTheme(letter?.theme);
 
   // 모션 최소화 설정 사용자는 봉투 연출을 건너뛰고 편지를 바로 보여준다.
   const prefersReducedMotion = useMemo(
     () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
     []
   );
+
+  const flashNotice = (message: string) => {
+    setNoticeMessage(message);
+    window.setTimeout(() => setNoticeMessage((current) => (current === message ? null : current)), 2200);
+  };
 
   const handleOpenLetter = () => {
     if (prefersReducedMotion) {
@@ -157,32 +146,75 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
     window.setTimeout(() => setIsOpened(true), 720);
   };
 
+  // 다시 봉투 닫힘 상태로 되돌려 열기 연출을 처음부터 다시 볼 수 있게 한다.
+  const handleReplay = () => {
+    setIsOpened(false);
+    setIsOpening(false);
+  };
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      setCopyMessage('링크를 복사했어요.');
-      window.setTimeout(() => setCopyMessage(null), 2200);
+      flashNotice('링크를 복사했어요.');
     } catch {
-      setCopyMessage('링크 복사에 실패했어요.');
-      window.setTimeout(() => setCopyMessage(null), 2200);
+      flashNotice('링크 복사에 실패했어요.');
+    }
+  };
+
+  // 링크 미리보기용으로 서버가 만든 OG 이미지(PNG)를 그대로 내려받아 편지를 이미지로 저장한다.
+  // 동일 origin이라 CORS 문제 없이 재사용할 수 있어 별도 캡처 라이브러리가 필요 없다.
+  const handleSaveImage = async () => {
+    setIsSavingImage(true);
+    try {
+      const response = await fetch(`/letter/${shareToken}/opengraph-image`);
+      if (!response.ok) throw new Error('이미지를 만들지 못했어요.');
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = `memolie-letter-${shareToken}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      flashNotice('편지 이미지를 저장했어요.');
+    } catch {
+      flashNotice('이미지 저장에 실패했어요.');
+    } finally {
+      setIsSavingImage(false);
     }
   };
 
   return (
     <main className={`min-h-screen bg-gradient-to-br ${theme.shell} px-4 py-8 text-[#332d29]`}>
       <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between gap-2">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-4 py-2 text-sm text-[#6f5c45] backdrop-blur">
             <Mail className="h-4 w-4" />
             Memolie Letter
           </div>
-          <Button variant="outline" size="sm" onClick={handleCopyLink}>
-            <Copy className="mr-2 h-4 w-4" />
-            링크 복사
-          </Button>
+          <div className="flex items-center gap-2">
+            {isOpened ? (
+              <>
+                <Button variant="ghost" size="sm" onClick={handleReplay}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  다시 보기
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleSaveImage} disabled={isSavingImage}>
+                  <Download className="mr-2 h-4 w-4" />
+                  {isSavingImage ? '저장 중...' : '이미지 저장'}
+                </Button>
+              </>
+            ) : null}
+            <Button variant="outline" size="sm" onClick={handleCopyLink}>
+              <Copy className="mr-2 h-4 w-4" />
+              링크 복사
+            </Button>
+          </div>
         </div>
 
-        {copyMessage ? <NoticeBox tone="overlay" className="mb-4">{copyMessage}</NoticeBox> : null}
+        {noticeMessage ? <NoticeBox tone="overlay" className="mb-4">{noticeMessage}</NoticeBox> : null}
 
         {isLoading ? (
           <SurfaceCard tone="overlay" radius="xl" className="rounded-[32px] px-8 py-20 text-center text-[#6f5c45]">

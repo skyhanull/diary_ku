@@ -27,9 +27,10 @@ interface UseEditorPersistenceActionsInput {
   onPersistSuccess: () => void;
 }
 
-// 공유 편지 생성 시 필요한 수신인 이름과 테마를 담는 타입
+// 공유 편지 생성 시 필요한 수신인 이름·커버 메시지·테마를 담는 타입
 interface CreateShareInput {
   recipientName: string;
+  coverMessage: string;
   theme: SharedLetterTheme;
 }
 
@@ -211,7 +212,7 @@ export function useEditorPersistenceActions({
   }, [handleAutosave]);
 
   const handleCreateShare = useCallback(
-    async ({ recipientName, theme }: CreateShareInput) => {
+    async ({ recipientName, coverMessage, theme }: CreateShareInput) => {
       setIsCreatingShare(true);
       setSaveError(null);
       setShareMessage(null);
@@ -229,7 +230,7 @@ export function useEditorPersistenceActions({
           items,
           background: "#fffdf9",
           recipientName: recipientName.trim() || null,
-          coverMessage: null,
+          coverMessage: coverMessage.trim() || null,
           theme,
         });
 

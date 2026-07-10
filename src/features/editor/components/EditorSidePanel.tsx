@@ -2,7 +2,7 @@
 // 에디터 사이드패널: 선택된 아이템의 폰트·색상·크기 등 속성을 편집하는 패널
 import Image from "next/image";
 import { forwardRef } from "react";
-import { Check, RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,6 @@ interface EditorSidePanelProps {
   isSearchingGif: boolean;
   selectedItem: EditorItem | null;
   selectedTextItem: EditorItem | null;
-  isSaving: boolean;
   onTextDraftChange: (value: string) => void;
   onAddText: () => void;
   onAiStickerPromptChange: (value: string) => void;
@@ -60,7 +59,6 @@ interface EditorSidePanelProps {
   onUpdateItem: (itemId: string, patch: Partial<EditorItem>) => void;
   onUpdateTextItem: (itemId: string, patch: Partial<TextPayload>) => void;
   onRemoveItem: (itemId: string) => void;
-  onSave: () => void;
 }
 
 function panelTitle(panel: EditorSidePanelName) {
@@ -90,7 +88,6 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
       isSearchingGif,
       selectedItem,
       selectedTextItem,
-      isSaving,
       onTextDraftChange,
       onAddText,
       onAiStickerPromptChange,
@@ -106,7 +103,6 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
       onUpdateItem,
       onUpdateTextItem,
       onRemoveItem,
-      onSave,
     },
     ref,
   ) => {
@@ -325,11 +321,6 @@ export const EditorSidePanel = forwardRef<HTMLElement, EditorSidePanelProps>(
             </SurfaceCard>
           ) : null}
         </div>
-
-        <Button className="mt-ds-6 h-12 w-full" onClick={onSave} disabled={isSaving}>
-          <Check className="mr-ds-1 h-4 w-4" />
-          {isSaving ? "저장 중..." : "저장하기"}
-        </Button>
       </aside>
     );
   },

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { EDITOR_PAGE_HEIGHT, EDITOR_PAGE_WIDTH } from '@/features/editor/lib/editor-canvas';
 import type { EditorItem, SharedLetterRecord } from '@/features/editor/types/editor.types';
+import { getLetterTheme } from '@/features/share/lib/letter-theme';
 
 interface LetterEnvelopeStageProps {
   letter: SharedLetterRecord;
@@ -60,10 +61,7 @@ function renderSharedItem(item: EditorItem) {
 }
 
 export function LetterEnvelopeStage({ letter, bodyText }: LetterEnvelopeStageProps) {
-  const isMidnight = letter.theme === 'midnight';
-  const paperTone = isMidnight
-    ? 'border-[#d4c2b0] bg-[linear-gradient(180deg,#fffaf4_0%,#fffdf9_52%,#f0e4d7_100%)]'
-    : 'border-[#eadfd2] bg-[linear-gradient(180deg,#fffdf8_0%,#fff8f0_48%,#f7eadc_100%)]';
+  const paperTone = getLetterTheme(letter.theme).paperTone;
 
   // 페이지(700px 기준 좌표계)를 컨테이너 폭에 맞춰 균일 축소하기 위한 배율을 계산한다.
   const stageRef = useRef<HTMLDivElement>(null);

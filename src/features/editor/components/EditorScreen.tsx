@@ -56,6 +56,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareRecipientName, setShareRecipientName] = useState("");
+  const [shareCoverMessage, setShareCoverMessage] = useState("");
   const [shareTheme, setShareTheme] = useState<SharedLetterTheme>("paper");
 
   const sidebarRef = useRef<HTMLElement | null>(null);
@@ -400,7 +401,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           isSearchingGif={media.isSearchingGif}
           selectedItem={selectedItem}
           selectedTextItem={selectedTextItem}
-          isSaving={isSaving}
           onTextDraftChange={setTextDraft}
           onAddText={handleAddText}
           onAiStickerPromptChange={(value) => { media.setAiStickerPrompt(value); media.clearStickerPreview(); }}
@@ -416,7 +416,6 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           onUpdateItem={updateItem}
           onUpdateTextItem={updateTextItem}
           onRemoveItem={removeItem}
-          onSave={handleSave}
         />
       </main>
 
@@ -433,6 +432,7 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
       {isShareModalOpen ? (
         <EditorShareModal
           recipientName={shareRecipientName}
+          coverMessage={shareCoverMessage}
           theme={shareTheme}
           sharedLetterUrl={sharedLetterUrl}
           existingShares={existingShares}
@@ -443,8 +443,9 @@ export function EditorScreen({ pageId }: EditorScreenProps) {
           shareMessage={shareMessage}
           saveError={saveError}
           onChangeRecipientName={setShareRecipientName}
+          onChangeCoverMessage={setShareCoverMessage}
           onChangeTheme={setShareTheme}
-          onCreateShare={() => void handleCreateShare({ recipientName: shareRecipientName, theme: shareTheme })}
+          onCreateShare={() => void handleCreateShare({ recipientName: shareRecipientName, coverMessage: shareCoverMessage, theme: shareTheme })}
           onCopyShareLink={() => void handleCopyShareLink()}
           onDeleteShare={(shareId) => void handleDeleteShare(shareId)}
           onClose={() => setIsShareModalOpen(false)}
