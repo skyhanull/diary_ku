@@ -1,7 +1,7 @@
 'use client';
 // 편지지 본문: 공유 일기를 에디터와 동일한 페이지 좌표계(700×933)를 그대로 스케일해 읽기 전용으로 재현한다.
 // 이렇게 하면 본문 글과 스티커·사진·텍스트 아이템의 상대 위치가 작성 당시와 정확히 일치한다.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Ref } from 'react';
 import Image from 'next/image';
 import { EDITOR_PAGE_HEIGHT, EDITOR_PAGE_WIDTH } from '@/features/editor/lib/editor-canvas';
 import type { EditorItem, SharedLetterRecord } from '@/features/editor/types/editor.types';
@@ -10,6 +10,8 @@ import { getLetterTheme } from '@/features/share/lib/letter-theme';
 interface LetterEnvelopeStageProps {
   letter: SharedLetterRecord;
   bodyText: string;
+  // 편지지 전체(본문+아이템)를 이미지로 캡처할 때 쓰는 편지지 article ref
+  captureRef?: Ref<HTMLElement>;
 }
 
 function renderSharedItem(item: EditorItem) {
@@ -60,7 +62,7 @@ function renderSharedItem(item: EditorItem) {
   );
 }
 
-export function LetterEnvelopeStage({ letter, bodyText }: LetterEnvelopeStageProps) {
+export function LetterEnvelopeStage({ letter, bodyText, captureRef }: LetterEnvelopeStageProps) {
   const paperTone = getLetterTheme(letter.theme).paperTone;
 
   // 페이지(700px 기준 좌표계)를 컨테이너 폭에 맞춰 균일 축소하기 위한 배율을 계산한다.
@@ -82,7 +84,7 @@ export function LetterEnvelopeStage({ letter, bodyText }: LetterEnvelopeStagePro
   return (
     <section className="rounded-[36px] border border-white/60 bg-white/35 p-4 shadow-[0_24px_60px_rgba(78,60,45,0.14)] backdrop-blur">
       <div className="mx-auto max-w-[760px]">
-        <article className={`relative overflow-hidden rounded-[28px] border ${paperTone} px-5 py-6 shadow-[0_28px_70px_rgba(76,54,36,0.16)] sm:px-8 sm:py-9`}>
+        <article ref={captureRef} className={`relative overflow-hidden rounded-[28px] border ${paperTone} px-5 py-6 shadow-[0_28px_70px_rgba(76,54,36,0.16)] sm:px-8 sm:py-9`}>
           <div className="relative z-10 border-b border-[#eadfd2] pb-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#9b8170]">{letter.snapshot.entryDate}</p>
             <h1 className="mt-3 font-['Epilogue'] text-3xl font-bold tracking-tight text-[#34322f]">

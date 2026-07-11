@@ -1,6 +1,6 @@
 'use client';
 // 공유 편지 화면: shareToken으로 공유된 일기를 봉투 열기 연출과 함께 읽기 전용 편지로 렌더링한다
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, Mail, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,7 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
   const [isSavingImage, setIsSavingImage] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
   const [isOpened, setIsOpened] = useState(false);
+  const letterRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -161,26 +162,47 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
     }
   };
 
-  // 링크 미리보기용으로 서버가 만든 OG 이미지(PNG)를 그대로 내려받아 편지를 이미지로 저장한다.
-  // 동일 origin이라 CORS 문제 없이 재사용할 수 있어 별도 캡처 라이브러리가 필요 없다.
+  // Blob을 PNG 파일로 내려받는다.
+  const triggerDownload = (blob: Blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = `memolie-letter-${shareToken}.png`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  // 편지지 전체(본문+아이템)를 html2canvas로 캡처해 PNG로 저장한다.
+  // 원격 이미지 CORS 등으로 캡처가 실패하면 서버 OG 카드 이미지로 폴백한다.
   const handleSaveImage = async () => {
     setIsSavingImage(true);
     try {
-      const response = await fetch(`/letter/${shareToken}/opengraph-image`);
-      if (!response.ok) throw new Error('이미지를 만들지 못했어요.');
+      const node = letterRef.current;
+      if (!node) throw new Error('편지지를 찾지 못했어요.');
 
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = objectUrl;
-      anchor.download = `memolie-letter-${shareToken}.png`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(node, {
+        useCORS: true,
+        backgroundColor: '#fffdf9',
+        scale: Math.min(2, (window.devicePixelRatio || 1) + 1)
+      });
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('capture failed');
+
+      triggerDownload(blob);
       flashNotice('편지 이미지를 저장했어요.');
     } catch {
-      flashNotice('이미지 저장에 실패했어요.');
+      // 폴백: 서버가 만든 OG 카드(요약) 이미지
+      try {
+        const response = await fetch(`/letter/${shareToken}/opengraph-image`);
+        if (!response.ok) throw new Error('fallback failed');
+        triggerDownload(await response.blob());
+        flashNotice('편지 카드 이미지를 저장했어요.');
+      } catch {
+        flashNotice('이미지 저장에 실패했어요.');
+      }
     } finally {
       setIsSavingImage(false);
     }
@@ -237,7 +259,7 @@ export function SharedLetterScreen({ shareToken }: SharedLetterScreenProps) {
 
         {letter && isOpened ? (
           <div className="animate-letter-in">
-            <LetterEnvelopeStage letter={letter} bodyText={bodyText} />
+            <LetterEnvelopeStage letter={letter} bodyText={bodyText} captureRef={letterRef} />
           </div>
         ) : null}
       </div>
